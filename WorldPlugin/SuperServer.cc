@@ -4,6 +4,13 @@ using namespace std;
 using namespace rapidxml;
 using namespace gazebo;
 
+string Int2String(int number)
+{
+  stringstream ss; //create a stringstream
+  ss << number;    //add number to the stream
+  return ss.str(); //return a string with the contents of the stream
+}
+
 CollisionInformation::CollisionInformation(string collision1, string collision2, string link_collision1, string link_collision2)
 {
   Model1 = collision1;
@@ -70,6 +77,29 @@ void ControlCenter::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
   // math::Pose positionTMP(math::Vector3(0, 0, 0), math::Quaternion(1.57, 0, 0));
   // InsertModel("Module0", positionTMP);
   BuildConfigurationFromXML();
+
+  // Here is the test for dynamic shared libraries
+  void *lib_handle;
+  char *error;
+  LibraryTemplate * (*mkr)();
+
+  lib_handle = dlopen("/home/edward/.gazebo/models/SMORES6Uriah/plugins/libSpiderController.so", RTLD_LAZY);
+  if (!lib_handle) 
+  {
+    fprintf(stderr, "%s\n", dlerror());
+    exit(1);
+  }
+
+  // void *mkr = dlsym(lib_handle, "maker");
+  mkr = (LibraryTemplate * (*)())dlsym(lib_handle, "maker");
+  if ((error = dlerror()) != NULL)  
+  {
+    fprintf(stderr, "%s\n", error);
+    exit(1);
+  }
+
+  LibraryTemplate *Spider = mkr();
+  Spider->WhenRunning();
 }
 
 void ControlCenter::addEntity2World(std::string & _info)
@@ -154,29 +184,6 @@ void ControlCenter::OnSystemRunning(const common::UpdateInfo & /*_info*/)
 {
   // Main command execution procedure
   CommandManager();
-
-  // Here is the test for dynamic shared libraries
-  // void *lib_handle;
-  // double (*fn)(int *);
-  // int x;
-  // char *error;
-
-  // lib_handle = dlopen("/opt/lib/libctest.so", RTLD_LAZY);
-  // if (!lib_handle) 
-  // {
-  //   fprintf(stderr, "%s\n", dlerror());
-  //   exit(1);
-  // }
-
-  // fn = dlsym(lib_handle, "ctest1");
-  // if ((error = dlerror()) != NULL)  
-  // {
-  //   fprintf(stderr, "%s\n", error);
-  //   exit(1);
-  // }
-
-  // (*fn)(&x);
-  // printf("Valx=%d\n",x);
 
   // dlclose(lib_handle);
 } 

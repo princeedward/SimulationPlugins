@@ -9,13 +9,11 @@ if (PKG_CONFIG_FOUND)
 endif()
 include_directories(
 	${GAZEBO_INCLUDE_DIRS}
-	${CMAKE_CURRENT_BINARY_DIR}/../../WorldPlugin/
-	${CMAKE_CURRENT_BINARY_DIR}/../../WorldPlugin/build/msgs
-	)
+	${CMAKE_CURRENT_BINARY_DIR}/../../
+	${CMAKE_CURRENT_BINARY_DIR}/../../../WorldPlugin/
+	${CMAKE_CURRENT_BINARY_DIR}/../../../WorldPlugin/build/msgs
+)
 link_directories(${GAZEBO_LIBRARY_DIRS})
 
-add_library(LibraryTemplate SHARED LibraryTemplate.cc)
-target_link_libraries(LibraryTemplate ${GAZEBO_libraries} ${Boost_LIBRARIES})
-
-add_library(SpiderController SHARED SpiderController.cc)
+add_library(SpiderController SHARED ${CMAKE_CURRENT_BINARY_DIR}/../../LibraryTemplate.cc SpiderController.cc)
 target_link_libraries(SpiderController ${GAZEBO_libraries} ${Boost_LIBRARIES})

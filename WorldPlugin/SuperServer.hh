@@ -23,6 +23,8 @@
 #include "rapidxml.hpp"
 #include "rapidxml_utils.hpp"
 
+#include "LibraryTemplate.hh"
+
 #define PI 3.141593   // 3.1411593
 #define VALIDCONNECTIONDISUPPER 0.110
 #define VALIDCONNECTIONDISLOWER 0.098
@@ -31,13 +33,6 @@
 
 using namespace std;
 using namespace rapidxml;
-
-string Int2String(int number)
-{
-  stringstream ss; //create a stringstream
-  ss << number;    //add number to the stream
-  return ss.str(); //return a string with the contents of the stream
-}
 
 namespace gazebo
 {

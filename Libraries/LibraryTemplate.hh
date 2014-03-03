@@ -5,6 +5,11 @@
 
 using namespace std;
 
+namespace gazebo
+{
+	class ControlCenter;
+}
+
 class LibraryTemplate
 {
 	public: 
