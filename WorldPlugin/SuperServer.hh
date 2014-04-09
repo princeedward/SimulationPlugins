@@ -127,11 +127,11 @@ namespace gazebo
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     private: void CommandManager(void);
     
-    public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int priority = 0, int msg_type = 3);
+    public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
  
-    public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int priority = 0, int msg_type = 3);
+    public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
 
-    public: void SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int priority = 0);
+    public: void SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group = 0, unsigned int time_stamp = 0, int priority = 0);
     
     // Those commands are not recommended for sending the gait table or position coordinates
     // But could be used in the direct driving situation
@@ -193,6 +193,8 @@ namespace gazebo
     // This function is only for demonstration
     void readFileAndGenerateCommands(const char* fileName);
 
+    void currentCommandGroupInitialization(void);
+
     private: physics::WorldPtr currentWorld;
     private: event::ConnectionPtr addEntityConnection;
     private: transport::PublisherPtr statePub;
@@ -215,6 +217,8 @@ namespace gazebo
     private: vector<math::Pose> InitialPosition;
     
     private: vector<ModuleCommandsPtr> ModuleCommandContainer;
+    private: int CurrentCommandGroup;
+    private: int CurrentMinimalGroup;
     //+++++++++ testing ++++++++++++++++++++++++++++
     private: int infoCounter;
     private: int numOfModules;

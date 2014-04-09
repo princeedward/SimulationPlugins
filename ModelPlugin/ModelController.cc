@@ -383,22 +383,22 @@ void ModelController::JointAngleTracking(void)
 	if (abs(GetJointAngle(JointWF,0).Radian()-JointAngleShouldBe[0])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		cout<<"Model: "<<model->GetName() <<" joint 0 difference "<<abs(GetJointAngle(JointWF,0).Radian()-JointAngleShouldBe[0])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 0 difference "<<abs(GetJointAngle(JointWF,0).Radian()-JointAngleShouldBe[0])<<endl;
 	}
 	if (abs(GetJointAngle(JointWL,0).Radian()-JointAngleShouldBe[1])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		cout<<"Model: "<<model->GetName() <<" joint 1 difference "<<abs(GetJointAngle(JointWL,0).Radian()-JointAngleShouldBe[1])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 1 difference "<<abs(GetJointAngle(JointWL,0).Radian()-JointAngleShouldBe[1])<<endl;
 	}
 	if (abs(GetJointAngle(JointWR,0).Radian()-JointAngleShouldBe[2])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		cout<<"Model: "<<model->GetName() <<" joint 2 difference "<<abs(GetJointAngle(JointWR,0).Radian()-JointAngleShouldBe[2])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 2 difference "<<abs(GetJointAngle(JointWR,0).Radian()-JointAngleShouldBe[2])<<endl;
 	}
 	if (abs(GetJointAngle(JointCB,0).Radian()-JointAngleShouldBe[3])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		cout<<"Model: "<<model->GetName() <<" joint 3 difference "<<abs(GetJointAngle(JointCB,0).Radian()-JointAngleShouldBe[3])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 3 difference "<<abs(GetJointAngle(JointCB,0).Radian()-JointAngleShouldBe[3])<<endl;
 	}
 	if (execution_finished_flag)
 	{
