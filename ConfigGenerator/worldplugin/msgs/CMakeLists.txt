@@ -11,6 +11,7 @@ endforeach()
 set (msgs
   collision_message_plus.proto
   command_message.proto
+  config_message.proto
   ${PROTOBUF_IMPORT_DIRS}/pose.proto
   ${PROTOBUF_IMPORT_DIRS}/vector3d.proto
   ${PROTOBUF_IMPORT_DIRS}/quaternion.proto
@@ -23,3 +24,6 @@ target_link_libraries(collision_message_plus ${PROTOBUF_LIBRARY})
 
 add_library(command_message SHARED ${PROTO_SRCS})
 target_link_libraries(command_message ${PROTOBUF_LIBRARY})
+
+add_library(config_message SHARED ${PROTO_SRCS})
+target_link_libraries(config_message ${PROTOBUF_LIBRARY})
