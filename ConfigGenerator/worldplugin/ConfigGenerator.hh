@@ -65,6 +65,8 @@ namespace gazebo
     public: void Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf);
     
     private: void addEntity2World(std::string & _info);
+
+    private: void BeforeRendering();
     
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // This function will be called in the every iteration of the simulation
@@ -217,6 +219,7 @@ namespace gazebo
     private: vector<physics::JointPtr> DynamicConnections;
     // The event that will be refreshed in every iteration of the simulation
     private: event::ConnectionPtr updateConnection;
+    private: event::ConnectionPtr beforeRendering;
     // The container that has all the edges
     private: vector<SmoresEdgePtr> ConnectionEdges;
     // The indicator of a new model has been added

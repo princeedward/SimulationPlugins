@@ -74,6 +74,7 @@ void ControlCenter::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
   // statePub->Publish(stateMsg);
   this->addEntityConnection = event::Events::ConnectAddEntity(boost::bind(&ControlCenter::addEntity2World, this, _1));
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&ControlCenter::OnSystemRunning, this, _1));
+  this->beforeRendering = event::Events::ConnectRender(boost::bind(&ControlCenter::BeforeRendering,this));
 
   // math::Pose positionTMP(math::Vector3(0, 0, 0), math::Quaternion(1.57, 0, 0));
   // InsertModel("Module0", positionTMP);
@@ -148,30 +149,34 @@ void ControlCenter::addEntity2World(std::string & _info)
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   // Initiate the joint values
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  // if (InitalJointValue.size()>0)
-  // {
-  //   // cout<<"World: InitalJointValue size is "<<InitalJointValue.size()<<endl;
-  //   bool flags[4] = {true};
-  //   double joint_angles[4] = {0};
-  //   string joint_values_string = InitalJointValue.at(0);
-  //   for (int i = 0; i < 4; ++i)
-  //   {
-  //     if (i<3)
-  //     {
-  //       joint_angles[i] = atof(joint_values_string.substr(0,joint_values_string.find(" ")).c_str());
-  //       joint_values_string = joint_values_string.substr(joint_values_string.find(" ")+1);
-  //     }else
-  //     {
-  //       joint_angles[i] = atof(joint_values_string.substr(0).c_str());
-  //     }
-  //   }
-  //   cout<<"World: "<<newModule->ModuleID<<":joint0:"<<joint_angles[0]<<endl;
-  //   cout<<"World: "<<newModule->ModuleID<<":joint1:"<<joint_angles[1]<<endl;
-  //   cout<<"World: "<<newModule->ModuleID<<":joint2:"<<joint_angles[2]<<endl;
-  //   cout<<"World: "<<newModule->ModuleID<<":joint3:"<<joint_angles[3]<<endl;
-  //   SendGaitTable(newModule, flags, joint_angles);
-  //   // InitalJointValue.erase(InitalJointValue.begin());
-  // }
+  if (InitalJointValue.size()>0)
+  {
+    // cout<<"World: InitalJointValue size is "<<InitalJointValue.size()<<endl;
+    // bool flags[4] = {true};
+    double joint_angles[4] = {0};
+    string joint_values_string = InitalJointValue.at(0);
+    for (int i = 0; i < 4; ++i)
+    {
+      if (i<3)
+      {
+        joint_angles[i] = atof(joint_values_string.substr(0,joint_values_string.find(" ")).c_str());
+        joint_values_string = joint_values_string.substr(joint_values_string.find(" ")+1);
+      }else
+      {
+        joint_angles[i] = atof(joint_values_string.substr(0).c_str());
+      }
+    }
+    cout<<"World: "<<newModule->ModuleID<<":joint0:"<<joint_angles[0]<<endl;
+    cout<<"World: "<<newModule->ModuleID<<":joint1:"<<joint_angles[1]<<endl;
+    cout<<"World: "<<newModule->ModuleID<<":joint2:"<<joint_angles[2]<<endl;
+    cout<<"World: "<<newModule->ModuleID<<":joint3:"<<joint_angles[3]<<endl;
+    // currentWorld->GetModel(_info)->GetJoint("Front_wheel_hinge")->SetAngle(0,joint_angles[0]);
+    // currentWorld->GetModel(_info)->GetJoint("Left_wheel_hinge")->SetAngle(0,joint_angles[1]);
+    // currentWorld->GetModel(_info)->GetJoint("Right_wheel_hinge")->SetAngle(0,joint_angles[2]);
+    // currentWorld->GetModel(_info)->GetJoint("Center_hinge")->SetAngle(0,joint_angles[3]);
+    // SendGaitTable(newModule, flags, joint_angles);
+    // InitalJointValue.erase(InitalJointValue.begin());
+  }
 
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   // Dynamic subscriber of collision topic
@@ -179,6 +184,12 @@ void ControlCenter::addEntity2World(std::string & _info)
   // string NewSubName = "~/"+_info+"_Collision";
   // transport::SubscriberPtr newWorldSub = node1->Subscribe(NewSubName,&ControlCenter::AutomaticMagneticConnectionManagement, this);
   // WorldColSubscriber.push_back(newWorldSub);
+}
+
+void ControlCenter::BeforeRendering()
+{
+  cout<<"World: Before Rendering"<<endl;
+  cout<<"World: Where am I"<<endl;
 }
 
 void ControlCenter::OnSystemRunning(const common::UpdateInfo & /*_info*/)
@@ -275,6 +286,7 @@ void ControlCenter::ConfigMessageDecoding(ConfigMessagePtr &msg)
   {
     coordinates[i] = msg->modelposition(i);
   }
+  cout<<"World: z coor is: "<<coordinates[2]<<endl;
   double orientation[3] = {0,0,0};
   for (int i = 0; i < 3; ++i)
   {
@@ -290,6 +302,7 @@ void ControlCenter::ConfigMessageDecoding(ConfigMessagePtr &msg)
   ostringstream strs;
   strs << joints_angles[0]<<" "<< joints_angles[1]<<" "<< joints_angles[2]<<" "<< joints_angles[3];
   string joints_string = strs.str();
+  cout<<"World: Joint angles: "<<joints_string<<endl;
 
   InsertModel(module_name, positionTMP, joints_string);
 }
@@ -357,11 +370,22 @@ void ControlCenter::FeedBackMessageDecoding(CommandMessagePtr &msg)
           joint_angles[i] = atof(joint_values_string.substr(0).c_str());
         }
       }
-      currentWorld->GetModel(msg->stringmessage())->GetJoint("Front_wheel_hinge")->SetAngle(0,joint_angles[0]);
-      currentWorld->GetModel(msg->stringmessage())->GetJoint("Left_wheel_hinge")->SetAngle(0,joint_angles[1]);
-      currentWorld->GetModel(msg->stringmessage())->GetJoint("Right_wheel_hinge")->SetAngle(0,joint_angles[2]);
-      currentWorld->GetModel(msg->stringmessage())->GetJoint("Center_hinge")->SetAngle(0,joint_angles[3]);
-      currentWorld->GetModel(msg->stringmessage())->SetLinkWorldPose(InitialPosition.at(0),currentWorld->GetModel(msg->stringmessage())->GetLink("CircuitHolder"));
+      cout<<"World: Angle Values: "<<joint_values_string<<endl;
+      cout<<"World: joint angle center: "<<joint_angles[3]<<","<<joint_angles[2]<<","<<joint_angles[1]<<","<<joint_angles[0]<<endl;
+      // currentWorld->GetModel(msg->stringmessage())->GetJoint("Front_wheel_hinge")->SetAngle(0,joint_angles[0]);
+      // currentWorld->GetModel(msg->stringmessage())->GetJoint("Left_wheel_hinge")->SetAngle(0,joint_angles[1]);
+      // currentWorld->GetModel(msg->stringmessage())->GetJoint("Right_wheel_hinge")->SetAngle(0,joint_angles[2]);
+      // currentWorld->GetModel(msg->stringmessage())->GetJoint("Center_hinge")->SetAngle(0,joint_angles[3]);
+      // math::Pose linkpose(0,0,0.05,joint_angles[3],0,0);
+      // currentWorld->GetModel(msg->stringmessage())->GetLink("CircuitHolder")->SetRelativePose (linkpose);
+      // currentWorld->GetModel(msg->stringmessage())->GetLink("CircuitHolder")->Update();
+      // currentWorld->GetModel(msg->stringmessage())->SetLinkWorldPose(InitialPosition.at(0),currentWorld->GetModel(msg->stringmessage())->GetLink("CircuitHolder"));
+      cout<<"World: Set the position in the feedback message."<<endl;
+      transport::NodePtr nodeTMP = transport::NodePtr(new transport::Node());
+      nodeTMP->Init(currentWorld->GetName());
+      transport::PublisherPtr guiPub = nodeTMP->Advertise<msgs::GUI>("~/gui", 5);
+      msgs::GUI tmpguimessage;
+      guiPub->Publish(tmpguimessage);
 
       // SendGaitTable(GetModulePtrByName(msg->stringmessage()), flags, joint_angles);
       if (InitalJointValue.size()==1)
@@ -722,7 +746,7 @@ void ControlCenter::InsertModel(string name, math::Pose position)
     sdf::readFile(MODULEPATH, modelSDF);
     sdf::ElementPtr modelElem = modelSDF->root->GetElement("model");
     // std::string modelName = modelElem->GetValueString("name");
-    math::Pose CalibrateShift(math::Vector3(0, 0, -0.05), math::Quaternion(0, 0, 0));
+    math::Pose CalibrateShift(math::Vector3(position.pos.x, position.pos.y, position.pos.z-0.05), position.rot);
     modelElem->GetAttribute("name")->Set(name);
     modelElem->GetElement("pose")->Set(CalibrateShift);
 
@@ -748,8 +772,33 @@ void ControlCenter::InsertModel(string name, math::Pose position, string joint_a
     // std::string modelName = modelElem->GetValueString("name");
     math::Pose CalibrateShift(math::Vector3(0, 0, -0.05), math::Quaternion(0, 0, 0));
     modelElem->GetAttribute("name")->Set(name);
-    modelElem->GetElement("pose")->Set(CalibrateShift);
-
+    modelElem->GetElement("pose")->Set(CalibrateShift*position);
+    double jointangles[4] = {0};
+    string joint_values_string = joint_angles;
+    for (int i = 0; i < 4; ++i)
+    {
+      if (i<3)
+      {
+        jointangles[i] = atof(joint_values_string.substr(0,joint_values_string.find(" ")).c_str());
+        joint_values_string = joint_values_string.substr(joint_values_string.find(" ")+1);
+      }else
+      {
+        jointangles[i] = atof(joint_values_string.substr(0).c_str());
+      }
+    }
+    math::Pose linkpose1(0,0,0.05,jointangles[3],0,0);
+    math::Pose linkpose2(0,0,0.05,jointangles[3],jointangles[1],0);
+    math::Pose linkpose3(0,0,0.05,jointangles[1],0,0);
+    math::Pose linkpose4(0,0,0.05,-jointangles[2],0,3.141593);
+    // cout<<"World: element name: "<<modelElem->GetElement("link")->GetAttribute("name")->GetAsString()<<endl;
+    sdf::ElementPtr link1 = modelElem->GetElement("link"); //Uholder
+    sdf::ElementPtr link2 = link1->GetNextElement("link")->GetNextElement("link"); //Frontwheel
+    sdf::ElementPtr link3 = link2->GetNextElement("link");  //Left wheel
+    sdf::ElementPtr link4 = link3->GetNextElement("link");  //Right wheel
+    link1->GetElement("pose")->Set(linkpose1);
+    link2->GetElement("pose")->Set(linkpose2);
+    link3->GetElement("pose")->Set(linkpose3);
+    link4->GetElement("pose")->Set(linkpose4);
     currentWorld->InsertModelSDF(*modelSDF);
     InitalJointValue.push_back(joint_angles);
     InitialPosition.push_back(position);

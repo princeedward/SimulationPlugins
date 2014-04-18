@@ -6,7 +6,9 @@ from Module import *
 from Connection import *
 from config_message_pb2 import *
 import eventlet  # need to install: $:sudo pip install eventlet
-from pygazebo import Manager  #need to install: $: sudo pip install pygazebo
+from pygazebo import *  #need to install: $: sudo pip install pygazebo
+from gztopic import *
+import pdb
 
 window_width = 800
 window_height = 520
@@ -40,12 +42,18 @@ class Example(Frame):
         self.a_dis.set(0)
         self.modellist = StringVar()
         self.adjacentnode = StringVar()
-        self.manager = Manager(("127.0.0.1",11345))
+        self.communicator = GzCommunicator()
+        self.communicator.StartCommunicator()
+        # self.newconnection = gztopic.CoonectionEstablish()
+        # pdb.set_trace()
+        # self.manager = Manager()
         self.ServerConnected = 1
-        try:
-          self.publisher = self.manager.advertise('/gazebo/Configuration/configSubscriber','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage'
-        except ValueError:
-          self.ServerConnected = 0
+        # try:
+        # pdb.set_trace()
+        # self.publisher = self.manager.advertise('/','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage' /gazebo/Configuration/configSubscriber
+        # self.publisher.wait_for_listener()
+        # except ValueError:
+        #   self.ServerConnected = 0
         self.initUI()
         
     def initUI(self):
@@ -69,12 +77,12 @@ class Example(Frame):
 
         # --------------- Close Button ------------------------------
         closeButton = Button(f1, text="Close")
-        closeButton["command"] = self.quit
+        closeButton["command"] = self.CloseWindow
         closeButton.place(x = window_width-Border_width-5, y = window_height-Border_hieht-5, anchor = SE)
         saveButton = Button(f1, text="Save")
         saveButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
         closeButton2 = Button(f2, text="Close")
-        closeButton2["command"] = self.quit
+        closeButton2["command"] = self.CloseWindow
         closeButton2.place(x = window_width-Border_width-5, y = window_height-Border_hieht-5, anchor = SE)
         saveButton2 = Button(f2, text="Save")
         saveButton2.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
@@ -153,8 +161,8 @@ class Example(Frame):
         #--------------- Joint Angle Setting -----------------------
         label9 = Label(f1, text='Joint Angle Bending ')
         label9.place(x = 40, y = 280)
-        self.Joint0 = Scale(f1, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 90)
-        self.Joint0.place(x = 100, y = 330, anchor = CENTER)
+        self.Joint3 = Scale(f1, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 90)
+        self.Joint3.place(x = 100, y = 330, anchor = CENTER)
         label10 = Label(f1, text='Joint Angle Left Wheel ')
         label10.place(x = 210, y = 280)
         self.Joint1 = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
@@ -166,8 +174,8 @@ class Example(Frame):
         self.Joint2.place(x = 100, y = 410, anchor = CENTER)
         label12 = Label(f1, text='Joint Angle Front Wheel ')
         label12.place(x = 210, y = 360)
-        self.Joint3 = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
-        self.Joint3.place(x = 280, y = 410, anchor = CENTER)
+        self.Joint0 = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
+        self.Joint0.place(x = 280, y = 410, anchor = CENTER)
 
         #--------------- Face Displacement ------------------------
         label13 = Label(f1, text='Distance offset ')
@@ -184,15 +192,15 @@ class Example(Frame):
         label15 = Label(f1, text='Model Orientation ')
         label15.place(x = 610, y = 210)
 
-        label16 = Label(f1, text='Joint Angle Bending ')
+        label16 = Label(f1, text='Row ')
         label16.place(x = 610, y = 240)
         self.row = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
         self.row.place(x = 660, y = 280, anchor = CENTER)
-        label17 = Label(f1, text='Joint Angle Left Wheel ')
+        label17 = Label(f1, text='Pitch ')
         label17.place(x = 610, y = 310)
         self.pitch = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
         self.pitch.place(x = 660, y = 350, anchor = CENTER)
-        label18 = Label(f1, text='Joint Angle Right Wheel ')
+        label18 = Label(f1, text='Yaw ')
         label18.place(x = 610, y = 380)
         self.yaw = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
         self.yaw.place(x = 660, y = 420, anchor = CENTER)
@@ -247,6 +255,16 @@ class Example(Frame):
         InsertButton = Button(f1, text="Insert")
         InsertButton["command"] = self.InsertModel
         InsertButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
+
+        #---------------- Here is a test -----------------------------
+        # newmessage = ConfigMessage()
+        # newmessage.ModelName = "hello"
+        # for i in xrange(6):
+        #   newmessage.ModelPosition.append(0)
+        # for i in xrange(4):
+        #   newmessage.JointAngles.append(0)
+        # print "The Messgae is: ",newmessage.ModelName
+        # self.publisher.publish(newmessage)
 
     def InsertModel(self,*args):
       print "frob called with {} arguments".format(len(args))
@@ -339,11 +357,19 @@ class Example(Frame):
       newmessage.ModelName = amodule.ModelName
       for i in xrange(6):
         newmessage.ModelPosition.append(amodule.Position[i])
+      print "Coor info",newmessage.ModelPosition
       for i in xrange(4):
         newmessage.JointAngles.append(amodule.JointAngle[i])
-      self.publisher.publish(newmessage)
+      # print "Listeners are ",self.publisher.showlisteners()
+      # self.newconnection.sendData(newmessage)
+      # self.publisher.publish(newmessage)
+      self.communicator.publish(newmessage)
       # eventlet.sleep(1.0)
       print "Information published"
+
+    def CloseWindow(self):
+      self.communicator.stop()
+      self.quit()
 
 def degree2rad(angle):
   return angle/180.0*PI
