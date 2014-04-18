@@ -290,6 +290,8 @@ class Example(Frame):
         self.ModuleList[-1].connection(self.Node1.get(),self.ConnectionList[-1])
         theOtherModule = self.findModule(self.connectedmodelvar.get())
         theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
+        if self.ServerConnected == 1:
+          self.PublishMessage(self.ModuleList[-1])
 
       self.updateModuleList()
       self.nameIncrement()
