@@ -8,6 +8,7 @@ from config_message_pb2 import *
 import eventlet  # need to install: $:sudo pip install eventlet
 from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
+from SimpleKL import CloseEnough, Connectable
 import pdb
 # from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
 
@@ -219,19 +220,23 @@ class Example(Frame):
         label20 = Label(lf, text='Joint Angle Bending ')
         label20.place(x = 20, y = 10)
         self.Joint_3 = Scale(lf, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_3.bind('<ButtonRelease-1>',self.FindConnectable)
         self.Joint_3.place(x = 80, y = 50, anchor = CENTER)
         label21 = Label(lf, text='Joint Angle Left Wheel ')
         label21.place(x = 190, y = 10)
         self.Joint_1 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_1.bind('<ButtonRelease-1>',self.FindConnectable)
         self.Joint_1.place(x = 260, y = 50, anchor = CENTER)
 
         label22 = Label(lf, text='Joint Angle Right Wheel ')
         label22.place(x = 20, y = 80)
         self.Joint_2 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_2.bind('<ButtonRelease-1>',self.FindConnectable)
         self.Joint_2.place(x = 80, y = 120, anchor = CENTER)
         label23 = Label(lf, text='Joint Angle Front Wheel ')
         label23.place(x = 190, y = 80)
         self.Joint_0 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_0.bind('<ButtonRelease-1>',self.FindConnectable)
         self.Joint_0.place(x = 260, y = 120, anchor = CENTER)
 
         #---------------- Delete Model ----------------------------
@@ -241,14 +246,19 @@ class Example(Frame):
         DeleteButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
 
         #---------------- Add More Connections --------------------
-        more_conn = ttk.Labelframe(f2, text='Add More Connection ', width = 220, height = 100)
+        more_conn = ttk.Labelframe(f2, text='Add More Connection ', width = 220, height = 140)
         more_conn.place(x = 400, y = 50)
 
         label24 = Label(more_conn, text='Select Possible Connection ')
         label24.place(x = 10, y = 10)
-        nodeselect = ttk.Combobox(more_conn, textvariable=self.adjacentnode)
-        nodeselect['values'] = ()
-        nodeselect.place(x = 10, y = 40)
+        self.nodeselect = ttk.Combobox(more_conn, textvariable=self.adjacentnode)
+        self.nodeselect['values'] = ()
+        self.nodeselect.bind('<<ComboboxSelected>>',self.EnableAddNewConnection)
+        self.nodeselect.place(x = 10, y = 40)
+
+        self.ConnectButton = Button(more_conn, text="Connect")
+        self.ConnectButton["command"] = self.AddNewConnection
+        self.ConnectButton.place(x = 130, y = 80)
 
         #---------------- Insert Model -------------------------------
         InsertButton = Button(f1, text="Insert")
@@ -389,6 +399,7 @@ class Example(Frame):
         self.Joint_2.set(int(modelobj.JointAngle[2]/PI*180))
         self.Joint_1.set(int(modelobj.JointAngle[1]/PI*180))
         self.Joint_0.set(int(modelobj.JointAngle[0]/PI*180))
+      self.FindConnectable()
 
     def ChangeJointAngle(self,*args):
       print "Angle Changed"
@@ -434,6 +445,41 @@ class Example(Frame):
     def SaveEnable(self):
       self.saveButton["state"] = NORMAL
       self.saveButton2["state"] = NORMAL
+
+    def FindConnectable(self,*args):
+      modelname = self.modellist.get()
+      modelobj = self.findModule(modelname)
+      closeModulesCandidate = []
+      for eachmodel in self.ModuleList:
+        if CloseEnough(modelobj.Position,eachmodel.Position):
+          closeModulesCandidate.append(eachmodel)
+      connectedModel = []
+      for i in xrange(4):
+        if len(modelobj.nodes[i])>0:
+          connectedModel.append(modelobj.nodes[i].Module1)
+          connectedModel.append(modelobj.nodes[i].Module2)
+      closeModules = [eachmodel for eachmodel in closeModulesCandidate if not eachmodel.ModelName in connectedModel]    
+      connectableList = []
+      self.connectableRealList = []
+      for eachmodel in closeModules:
+        connectNode = Connectable(modelobj.Position,modelobj.JointAngle,eachmodel.Position,eachmodel.JointAngle)
+        if connectNode :
+          connectableList.append("node"+str(connectNode[0])+":"+eachmodel.ModelName+"-"+str(connectNode[1]))
+          self.connectableRealList.append([modelobj,eachmodel,connectNode])
+      self.nodeselect['values'] = tuple(connectableList)
+
+    def AddNewConnection(self):
+      indx = self.nodeselect['values'].index(self.adjacentnode.get())
+      new_connection = Connection(self.connectableRealList[indx][0].ModelName,self.connectableRealList[indx][1].ModelName,self.connectableRealList[indx][2][0],self.connectableRealList[indx][2][1],0,0)
+      self.ConnectionList.append(new_connection)
+      self.connectableRealList[indx][0].connection(self.connectableRealList[indx][2][0],self.ConnectionList[-1])
+      self.connectableRealList[indx][1].connection(self.connectableRealList[indx][2][1],self.ConnectionList[-1])
+      self.adjacentnode.set("")
+      self.ConnectButton["state"] = DISABLED
+      self.FindConnectable()
+
+    def EnableAddNewConnection(self,*args):
+      self.ConnectButton["state"] = NORMAL
 
 def degree2rad(angle):
   return angle/180.0*PI
