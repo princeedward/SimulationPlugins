@@ -9,6 +9,7 @@ import eventlet  # need to install: $:sudo pip install eventlet
 from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
 import pdb
+from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
 
 window_width = 800
 window_height = 520
@@ -28,6 +29,7 @@ class Example(Frame):
         self.modelname.set('Module_0')
         self.InsertMethod = StringVar()
         self.InsertMethod.set('Connection')
+        self.Kinematics = SmoresKinematics()  # Computes kinematics
         self.connectedmodelvar = StringVar()
         self.Node1 = IntVar()
         self.Node1.set(3)
