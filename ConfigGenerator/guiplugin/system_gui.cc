@@ -122,24 +122,35 @@ namespace gazebo
       for (unsigned int i = 0; i < JointUpdateList.size(); ++i)
       {
         string modelname = JointUpdateList.at(i).ModelName;
+        // cout<<"Gui: breakpoint 1"<<endl;
+        // SmallDelay(10);
         if (scene->GetVisual(modelname))
         {
           double *jointangles = JointUpdateList.at(i).JointAngle;
           math::Pose linkpose1(0,0,0.05,jointangles[3],0,0);
-          math::Pose linkpose2(0,0,0.05,jointangles[3],jointangles[0],0);
+          math::Pose linkpose2(0,0,0.05,0,jointangles[0],0);
           math::Pose linkpose3(0,0,0.05,jointangles[1],0,0);
           math::Pose linkpose4(0,0,0.05,-jointangles[2],0,3.141593);
           math::Pose linkpose5(0,0,0.05,0,0,0);
-          scene->GetVisual(modelname)->GetChild(3)->SetPose(linkpose5);
-          scene->GetVisual(modelname)->GetChild(4)->SetPose(linkpose1);
-          scene->GetVisual(modelname)->GetChild(2)->SetPose(linkpose4);
-          scene->GetVisual(modelname)->GetChild(1)->SetPose(linkpose2);
-          scene->GetVisual(modelname)->GetChild(0)->SetPose(linkpose3);
-          // cout << "GUI: visual 0: "<<scene->GetVisual(modelname)->GetChild(0)->GetName()<<endl;
-          // cout << "GUI: visual 1: "<<scene->GetVisual(modelname)->GetChild(1)->GetName()<<endl;
-          // cout << "GUI: visual 2: "<<scene->GetVisual(modelname)->GetChild(2)->GetName()<<endl;
-          // cout << "GUI: visual 4: "<<scene->GetVisual(modelname)->GetChild(4)->GetName()<<endl;
+          // cout<<"Gui: breakpoint 2"<<endl;
+          // SmallDelay(10);
+          if (scene->GetVisual(modelname)->GetChild(0))
+          // if (scene->GetVisual(modelname)->GetChild(0) && scene->GetVisual(modelname)->GetChild(1) && scene->GetVisual(modelname)->GetChild(2) && scene->GetVisual(modelname)->GetChild(3) && scene->GetVisual(modelname)->GetChild(4))
+          {
+            scene->GetVisual(modelname)->GetChild(3)->SetPose(linkpose1);
+            scene->GetVisual(modelname)->GetChild(4)->SetPose(linkpose5);
+            scene->GetVisual(modelname)->GetChild(2)->SetPose(linkpose4);
+            scene->GetVisual(modelname)->GetChild(1)->SetPose(linkpose2);
+            scene->GetVisual(modelname)->GetChild(0)->SetPose(linkpose3);
+          }
+          // cout << "GUI: visual 0: "<<scene->GetVisual(modelname)->GetChild(0)->GetName()<<endl;  //left wheel
+          // cout << "GUI: visual 1: "<<scene->GetVisual(modelname)->GetChild(1)->GetName()<<endl;  //front wheel
+          // cout << "GUI: visual 2: "<<scene->GetVisual(modelname)->GetChild(2)->GetName()<<endl;  //right wheel
+          // cout << "GUI: visual 4: "<<scene->GetVisual(modelname)->GetChild(4)->GetName()<<endl;  //circuit holder
           // JointUpdateList.erase(JointUpdateList.begin());
+        }else
+        {
+          SmallDelay(500);
         }
       }
     }
@@ -182,6 +193,13 @@ namespace gazebo
       {
         JointUpdate NewJointUpdate(module_name,joints_angles);
         JointUpdateList.push_back(NewJointUpdate);
+      }
+    }
+
+    private: void SmallDelay(int counts)
+    {
+      for (int i = 0; i < counts; ++i)
+      {
       }
     }
 

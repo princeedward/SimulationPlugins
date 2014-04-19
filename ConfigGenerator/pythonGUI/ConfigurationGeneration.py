@@ -9,7 +9,7 @@ import eventlet  # need to install: $:sudo pip install eventlet
 from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
 import pdb
-from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
+# from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
 
 window_width = 800
 window_height = 520
@@ -29,7 +29,7 @@ class Example(Frame):
         self.modelname.set('Module_0')
         self.InsertMethod = StringVar()
         self.InsertMethod.set('Connection')
-        self.Kinematics = SmoresKinematics()  # Computes kinematics
+        # self.Kinematics = SmoresKinematics()  # Computes kinematics
         self.connectedmodelvar = StringVar()
         self.Node1 = IntVar()
         self.Node1.set(3)
@@ -81,13 +81,9 @@ class Example(Frame):
         closeButton = Button(f1, text="Close")
         closeButton["command"] = self.CloseWindow
         closeButton.place(x = window_width-Border_width-5, y = window_height-Border_hieht-5, anchor = SE)
-        saveButton = Button(f1, text="Save")
-        saveButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
         closeButton2 = Button(f2, text="Close")
         closeButton2["command"] = self.CloseWindow
         closeButton2.place(x = window_width-Border_width-5, y = window_height-Border_hieht-5, anchor = SE)
-        saveButton2 = Button(f2, text="Save")
-        saveButton2.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
 
         #---------------- Model Name ---------------------------------
         label = Label(f1, text='ModelName: ')
@@ -251,13 +247,19 @@ class Example(Frame):
         label24 = Label(more_conn, text='Select Possible Connection ')
         label24.place(x = 10, y = 10)
         nodeselect = ttk.Combobox(more_conn, textvariable=self.adjacentnode)
-        nodeselect['values'] = ('USA', 'Canada', 'Australia')
+        nodeselect['values'] = ()
         nodeselect.place(x = 10, y = 40)
 
         #---------------- Insert Model -------------------------------
         InsertButton = Button(f1, text="Insert")
         InsertButton["command"] = self.InsertModel
         InsertButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
+
+        #---------------- Save Button --------------------------------
+        self.saveButton = Button(f1, text="Save", command = self.WriteFile)
+        self.saveButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
+        self.saveButton2 = Button(f2, text="Save", command = self.WriteFile)
+        self.saveButton2.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
 
         #---------------- Here is a test -----------------------------
         # newmessage = ConfigMessage()
@@ -294,13 +296,14 @@ class Example(Frame):
           self.ConnectionList.append(new_connection)
           self.ModuleList[-1].connection(self.Node1.get(),self.ConnectionList[-1])
           theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
-        if self.ServerConnected == 1:
-          self.PublishMessage(self.ModuleList[-1])
+          if self.ServerConnected == 1:
+            self.PublishMessage(self.ModuleList[-1])
 
       self.updateModuleList()
       self.nameIncrement()
       self.Rel_pos.select()
       self.DisableXYZInput()
+      self.SaveEnable()
       print "Combox value", self.connectmodel.get()
       if self.connectmodel.get() != '':
         self.checkConnectivity()
@@ -396,6 +399,41 @@ class Example(Frame):
         print "joint angles ",modelobj.JointAngle
         if self.ServerConnected == 1:
           self.PublishMessage(modelobj)
+        self.SaveEnable()
+
+    def WriteFile(self):
+      f = open("InitialConfiguration", 'w')
+      lines = ['<?xml version="1.0" encoding="UTF-8"?>\n']
+      lines.append('<modules>\n')
+      for eachmodule in self.ModuleList:
+        lines.append('\t<module>\n')
+        lines.append('\t\t<name>'+eachmodule.ModelName+'</name>\n')
+        lines.append('\t\t<position>'+str(eachmodule.Position[0])+' '+str(eachmodule.Position[1])+' '+str(eachmodule.Position[2])+' '+str(eachmodule.Position[3])+' '+str(eachmodule.Position[4])+' '+str(eachmodule.Position[5])+'</position>\n')
+        lines.append('\t\t<joints>'+str(eachmodule.JointAngle[0])+' '+str(eachmodule.JointAngle[1])+' '+str(eachmodule.JointAngle[2])+' '+str(eachmodule.JointAngle[3])+'</joints>\n')
+        lines.append('\t</module>\n')
+      lines.append('</modules>\n\n')
+      lines.append('<connections>\n')
+      for eachconnection in self.ConnectionList:
+        lines.append('\t<connection>\n')
+        lines.append('\t\t<module1>'+eachconnection.Module1+'</module1>\n')
+        lines.append('\t\t<module2>'+eachconnection.Module2+'</module2>\n')
+        lines.append('\t\t<node1>'+str(eachconnection.Node1)+'</node1>\n')
+        lines.append('\t\t<node2>'+str(eachconnection.Node2)+'</node2>\n')
+        lines.append('\t\t<distance>'+str(eachconnection.Distance)+'</distance>\n')
+        lines.append('\t\t<angle>'+str(eachconnection.Angle)+'</angle>\n')
+        lines.append('\t</connection>\n')
+      lines.append('</connections>')
+      f.writelines(lines)
+      f.close()
+      self.saveButton["state"] = DISABLED
+      self.saveButton2["state"] = DISABLED
+      # toplevel = Toplevel(height=60, width=100)
+      # label1 = Label(toplevel, text="Configuration Saved")
+      # label1.pack()
+
+    def SaveEnable(self):
+      self.saveButton["state"] = NORMAL
+      self.saveButton2["state"] = NORMAL
 
 def degree2rad(angle):
   return angle/180.0*PI
