@@ -100,4 +100,4 @@ class GzCommunicator(object):
         self.conn.send(hex(msg.ByteSize()).rjust(8))
         self.conn.send(msg.SerializeToString())
 
-        time.sleep(0.2)
+        time.sleep(0.1)

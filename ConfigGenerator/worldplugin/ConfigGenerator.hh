@@ -209,6 +209,7 @@ namespace gazebo
     private: event::ConnectionPtr addEntityConnection;
     private: transport::PublisherPtr statePub;
     private: transport::SubscriberPtr configSub;
+    private: transport::PublisherPtr configPub;
     // private: vector<transport::PublisherPtr> WorldPublisher;
     // private: vector<transport::SubscriberPtr> WorldColSubscriber;
     // The pointer vector for all the models in the world

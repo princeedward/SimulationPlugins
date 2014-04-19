@@ -210,6 +210,7 @@ class Example(Frame):
         label19.place(x = 10, y = 10)
         self.modelselect = ttk.Combobox(f2, textvariable=self.modellist)
         self.modelselect['values'] = ()
+        self.modelselect.bind('<<ComboboxSelected>>',self.CheckJointAngle)
         self.modelselect.place(x = 95, y = 10)
 
         #---------------- Joint Angle Setting -------------------
@@ -219,21 +220,21 @@ class Example(Frame):
         # label24.place(x = 10, y = 40)
         label20 = Label(lf, text='Joint Angle Bending ')
         label20.place(x = 20, y = 10)
-        Joint_0 = Scale(lf, from_=-90, to=90, orient=HORIZONTAL,length = 150)
-        Joint_0.place(x = 80, y = 50, anchor = CENTER)
+        self.Joint_3 = Scale(lf, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_3.place(x = 80, y = 50, anchor = CENTER)
         label21 = Label(lf, text='Joint Angle Left Wheel ')
         label21.place(x = 190, y = 10)
-        Joint_1 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150)
-        Joint_1.place(x = 260, y = 50, anchor = CENTER)
+        self.Joint_1 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_1.place(x = 260, y = 50, anchor = CENTER)
 
         label22 = Label(lf, text='Joint Angle Right Wheel ')
         label22.place(x = 20, y = 80)
-        Joint_2 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150)
-        Joint_2.place(x = 80, y = 120, anchor = CENTER)
+        self.Joint_2 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_2.place(x = 80, y = 120, anchor = CENTER)
         label23 = Label(lf, text='Joint Angle Front Wheel ')
         label23.place(x = 190, y = 80)
-        Joint_3 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150)
-        Joint_3.place(x = 260, y = 120, anchor = CENTER)
+        self.Joint_0 = Scale(lf, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
+        self.Joint_0.place(x = 260, y = 120, anchor = CENTER)
 
         #---------------- Delete Model ----------------------------
         DeleteButton = Button(f2, text="Delete")
@@ -280,16 +281,17 @@ class Example(Frame):
           self.PublishMessage(self.ModuleList[-1])
       else:
         print "Method is Connection"
-        module_position = self.CalculatePosition()
-        module_jointangle = (degree2rad(self.Joint0.get()),degree2rad(self.Joint1.get()),degree2rad(self.Joint2.get()),degree2rad(self.Joint3.get()))
-        new_module = Module(self.modelname.get(),module_position,module_jointangle)
-        self.ModuleList.append(new_module)
-        print "Connected module name",self.connectedmodelvar.get()
-        new_connection = Connection(self.modelname.get(),self.connectedmodelvar.get(),self.Node1.get(),self.Node2.get(),self.C_dis.get(),self.a_dis.get())
-        self.ConnectionList.append(new_connection)
-        self.ModuleList[-1].connection(self.Node1.get(),self.ConnectionList[-1])
         theOtherModule = self.findModule(self.connectedmodelvar.get())
-        theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
+        if theOtherModule:
+          module_position = self.CalculatePosition()
+          module_jointangle = (degree2rad(self.Joint0.get()),degree2rad(self.Joint1.get()),degree2rad(self.Joint2.get()),degree2rad(self.Joint3.get()))
+          new_module = Module(self.modelname.get(),module_position,module_jointangle)
+          self.ModuleList.append(new_module)
+          print "Connected module name",self.connectedmodelvar.get()
+          new_connection = Connection(self.modelname.get(),self.connectedmodelvar.get(),self.Node1.get(),self.Node2.get(),self.C_dis.get(),self.a_dis.get())
+          self.ConnectionList.append(new_connection)
+          self.ModuleList[-1].connection(self.Node1.get(),self.ConnectionList[-1])
+          theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
         if self.ServerConnected == 1:
           self.PublishMessage(self.ModuleList[-1])
 
@@ -329,6 +331,7 @@ class Example(Frame):
       for eachmodule in self.ModuleList:
         if eachmodule.ModelName == modelname:
           return eachmodule
+      return False
 
     def checkConnectivity(self,*args):
       # print "Check the connectivity"
@@ -372,6 +375,25 @@ class Example(Frame):
     def CloseWindow(self):
       self.communicator.stop()
       self.quit()
+
+    def CheckJointAngle(self,*args):
+      modelname = self.modellist.get()
+      modelobj = self.findModule(modelname)
+      if modelobj.ModelName:
+        self.Joint_3.set(int(modelobj.JointAngle[3]/PI*180))
+        self.Joint_2.set(int(modelobj.JointAngle[2]/PI*180))
+        self.Joint_1.set(int(modelobj.JointAngle[1]/PI*180))
+        self.Joint_0.set(int(modelobj.JointAngle[0]/PI*180))
+
+    def ChangeJointAngle(self,*args):
+      print "Angle Changed"
+      modelname = self.modellist.get()
+      modelobj = self.findModule(modelname)
+      if modelobj:
+        modelobj.JointAngle = (degree2rad(self.Joint_0.get()),degree2rad(self.Joint_1.get()),degree2rad(self.Joint_2.get()),degree2rad(self.Joint_3.get()))
+        print "joint angles ",modelobj.JointAngle
+        if self.ServerConnected == 1:
+          self.PublishMessage(modelobj)
 
 def degree2rad(angle):
   return angle/180.0*PI
