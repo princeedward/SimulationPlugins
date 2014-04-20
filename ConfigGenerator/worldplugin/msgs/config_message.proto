@@ -10,4 +10,5 @@ message ConfigMessage
 	optional int32 ConnectedTo = 6;
 	optional double EdgeDis = 7;
 	optional double EdgeAng = 8;
+	optional bool DeleteFlag = 9;
 }

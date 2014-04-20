@@ -202,8 +202,9 @@ namespace gazebo
     
     // This function is only for demonstration
     // void readFileAndGenerateCommands(const char* fileName);
+    private: void DeleteModule(string module_name);
 
-    void currentCommandGroupInitialization(void);
+    // void currentCommandGroupInitialization(void);
 
     private: physics::WorldPtr currentWorld;
     private: event::ConnectionPtr addEntityConnection;

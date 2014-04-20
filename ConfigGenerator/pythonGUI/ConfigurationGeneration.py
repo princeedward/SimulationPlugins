@@ -28,6 +28,7 @@ class Example(Frame):
         self.ConnectionList = []
         self.modelname = StringVar()
         self.modelname.set('Module_0')
+        self.modulenameincrementrecorder = 0
         self.InsertMethod = StringVar()
         self.InsertMethod.set('Connection')
         # self.Kinematics = SmoresKinematics()  # Computes kinematics
@@ -240,10 +241,10 @@ class Example(Frame):
         self.Joint_0.place(x = 260, y = 120, anchor = CENTER)
 
         #---------------- Delete Model ----------------------------
-        DeleteButton = Button(f2, text="Delete")
-        # InsertButton["command"] = self.quit
-        DeleteButton["fg"]   = "red"
-        DeleteButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
+        self.DeleteButton = Button(f2, text="Delete", command = self.DeleteModule)
+        self.DeleteButton["state"] = DISABLED
+        self.DeleteButton["fg"]   = "red"
+        self.DeleteButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
 
         #---------------- Add More Connections --------------------
         more_conn = ttk.Labelframe(f2, text='Add More Connection ', width = 220, height = 140)
@@ -336,7 +337,8 @@ class Example(Frame):
       self.connectmodel['values'] = tuple(a_model_list)
 
     def  nameIncrement(self):
-      self.modelname.set('Module_'+str(len(self.ModuleList)))
+      self.modulenameincrementrecorder += 1
+      self.modelname.set('Module_'+str(self.modulenameincrementrecorder))
 
     # Put the position calculation code here
     def CalculatePosition(self):
@@ -400,6 +402,7 @@ class Example(Frame):
         self.Joint_1.set(int(modelobj.JointAngle[1]/PI*180))
         self.Joint_0.set(int(modelobj.JointAngle[0]/PI*180))
       self.FindConnectable()
+      self.DeleteButtonEnable()
 
     def ChangeJointAngle(self,*args):
       print "Angle Changed"
@@ -480,6 +483,37 @@ class Example(Frame):
 
     def EnableAddNewConnection(self,*args):
       self.ConnectButton["state"] = NORMAL
+
+    def DeleteModule(self):
+      newmessage = ConfigMessage()
+      newmessage.ModelName = self.modellist.get()
+      for idx,eachmodel in enumerate(self.ModuleList):
+        if eachmodel.ModelName == newmessage.ModelName:
+          for eachnode in xrange(4):
+            if len(eachmodel.nodes[eachnode])>0:
+              nodeidx = self.ConnectionList.index(eachmodel.nodes[eachnode])
+              acconection = eachmodel.nodes[eachnode]
+              self.findModule(acconection.Module1).disconnect(acconection.Node1)
+              self.findModule(acconection.Module2).disconnect(acconection.Node2)
+              del self.ConnectionList[nodeidx]
+          del self.ModuleList[idx]
+          break
+      for i in xrange(6):
+        newmessage.ModelPosition.append(0)
+      for i in xrange(4):
+        newmessage.JointAngles.append(0)
+      newmessage.DeleteFlag = True
+      self.communicator.publish(newmessage)
+      print "Module deleted"
+      self.updateModuleList()
+      self.modellist.set('')
+      self.DeleteButtonDisable()
+
+    def DeleteButtonDisable(self):
+      self.DeleteButton["state"] = DISABLED
+
+    def DeleteButtonEnable(self):
+      self.DeleteButton["state"] = NORMAL
 
 def degree2rad(angle):
   return angle/180.0*PI
