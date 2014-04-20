@@ -467,7 +467,7 @@ class Example(Frame):
       for eachmodel in closeModules:
         connectNode = Connectable(modelobj.Position,modelobj.JointAngle,eachmodel.Position,eachmodel.JointAngle)
         if connectNode :
-          connectableList.append("node"+str(connectNode[0])+":"+eachmodel.ModelName+"-"+str(connectNode[1]))
+          connectableList.append(self.GetNodenameByNodeNumber(connectNode[0])+":"+eachmodel.ModelName+"-"+self.GetNodenameByNodeNumber(connectNode[1]))
           self.connectableRealList.append([modelobj,eachmodel,connectNode])
       self.nodeselect['values'] = tuple(connectableList)
 
@@ -514,6 +514,16 @@ class Example(Frame):
 
     def DeleteButtonEnable(self):
       self.DeleteButton["state"] = NORMAL
+
+    def GetNodenameByNodeNumber(self,node):
+      if node == 0:
+        return "Front"
+      if node == 1:
+        return "Left"
+      if node == 2:
+        return "Right"
+      if node == 3:
+        return "Back"
 
 def degree2rad(angle):
   return angle/180.0*PI
