@@ -278,6 +278,8 @@ class Example(Frame):
         print "Joint angle tuple is ",module_jointangle
         new_module = Module(self.modelname.get(),module_position,module_jointangle)
         self.ModuleList.append(new_module)
+        # Add the module to the kinematic structure:
+        self.Kinematics.add_root_module( new_module.ModelName, new_module.Position, new_module.JointAngle )
         if self.ServerConnected == 1:
           self.PublishMessage(self.ModuleList[-1])
       else:
