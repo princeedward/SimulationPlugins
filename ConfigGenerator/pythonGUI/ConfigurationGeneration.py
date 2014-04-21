@@ -18,7 +18,7 @@ Border_width = 20
 Border_hieht = 40
 PI = 3.1415926
 
-class Example(Frame):
+class App(Frame):
   
     def __init__(self, parent):
         Frame.__init__(self, parent)   
@@ -401,6 +401,23 @@ class Example(Frame):
         self.Joint_2.set(int(modelobj.JointAngle[2]/PI*180))
         self.Joint_1.set(int(modelobj.JointAngle[1]/PI*180))
         self.Joint_0.set(int(modelobj.JointAngle[0]/PI*180))
+      # Lock the connected joint
+        if len(modelobj.nodes[0]) > 0:
+          self.Joint_0["state"] = DISABLED
+        else:
+          self.Joint_0["state"] = NORMAL
+        if len(modelobj.nodes[1]) > 0:
+          self.Joint_1["state"] = DISABLED
+        else:
+          self.Joint_1["state"] = NORMAL
+        if len(modelobj.nodes[2]) > 0:
+          self.Joint_2["state"] = DISABLED
+        else:
+          self.Joint_2["state"] = NORMAL
+        if len(modelobj.nodes[3]) > 0:
+          self.Joint_3["state"] = DISABLED
+        else:
+          self.Joint_3["state"] = NORMAL
       self.FindConnectable()
       self.DeleteButtonEnable()
 
@@ -532,7 +549,7 @@ def main():
   
     root = Tk()
     root.geometry(str(window_width)+"x"+str(window_height))
-    app = Example(root)
+    app = App(root)
     root.mainloop()  
 
 
