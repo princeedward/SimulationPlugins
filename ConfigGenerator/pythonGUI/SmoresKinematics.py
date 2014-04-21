@@ -15,12 +15,12 @@ class SmoresKinematics(object):
 		''' Adds the first module to the kinematic structure '''
 		assert self.root_module == None
 		self.name_mapping = {}
-		root_module = SmoresModule( module_name, 1 )	# rooted at node 1
-		self.name_mapping(module_name) = root_module
+		root_module = SmoresModule.SmoresModule( module_name, 1 )	# rooted at node 1
+		self.name_mapping[module_name] = root_module
 		self.module_list = [root_module]
 		self.set_joint_angles( root_module, joint_angles )
 		# Create design and check validity
-		self.design = SmoresDesign( root_module, self.module_list )
+		self.design = SmoresDesign.SmoresDesign( root_module, self.module_list )
 		self.design.check_validity();
 		return
 
@@ -31,7 +31,7 @@ class SmoresKinematics(object):
 	def get_module_position(self, module_name):
 		''' returns the current position of the middle of the module of interest, relative the root. '''
 		assert self.name_mapping.has_key(module_name)
-		module = self.name_mapping(module_name)
+		module = self.name_mapping[module_name]
 		# Get the KDL chain of the path from the root to the module of interest.
 		# Note that node 1 is at the center of the module.
 		(kdl_chain, joint_angles) = self.design.get_kinematics( self.root_node, module.nodes[1] )
