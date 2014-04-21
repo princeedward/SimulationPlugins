@@ -19,10 +19,10 @@ from pygazebo.msg.joint_pb2      import Joint
 from pygazebo.msg.subscribe_pb2  import Subscribe
 
 class GzCommunicator(object):
-    def __init__(self):
+    def __init__(self,masterip = '127.0.0.1',masterport = 11345):
         """Init function"""
-        self.MASTER_TCP_IP   = '127.0.0.1'
-        self.MASTER_TCP_PORT = 11345
+        self.MASTER_TCP_IP   = masterip
+        self.MASTER_TCP_PORT = masterport
 
         self.NODE_TCP_IP     = '127.0.0.1'
         self.NODE_TCP_PORT   = 11451
@@ -100,4 +100,4 @@ class GzCommunicator(object):
         self.conn.send(hex(msg.ByteSize()).rjust(8))
         self.conn.send(msg.SerializeToString())
 
-        time.sleep(0.2)
+        time.sleep(0.1)

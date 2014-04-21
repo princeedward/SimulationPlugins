@@ -202,13 +202,15 @@ namespace gazebo
     
     // This function is only for demonstration
     // void readFileAndGenerateCommands(const char* fileName);
+    private: void DeleteModule(string module_name);
 
-    void currentCommandGroupInitialization(void);
+    // void currentCommandGroupInitialization(void);
 
     private: physics::WorldPtr currentWorld;
     private: event::ConnectionPtr addEntityConnection;
     private: transport::PublisherPtr statePub;
     private: transport::SubscriberPtr configSub;
+    private: transport::PublisherPtr configPub;
     // private: vector<transport::PublisherPtr> WorldPublisher;
     // private: vector<transport::SubscriberPtr> WorldColSubscriber;
     // The pointer vector for all the models in the world
