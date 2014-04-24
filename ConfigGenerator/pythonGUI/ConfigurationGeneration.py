@@ -312,10 +312,13 @@ class App(Frame):
           theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
           if self.ServerConnected == 1:
             self.PublishMessage(self.ModuleList[-1])
-        self.Kinematics.add_child_module(theOtherModule.ModelName, new_module.ModelName, 
-            self.Node1.get(), self.Node2.get(), new_module.JointAngle)
-        (position, orientation) = self.Kinematics.get_module_position(new_module.ModelName)
-        print position
+            # Add module to the kinematics
+            parent_face = self.Node2.get()
+            new_module_face = self.Node1.get()
+            self.Kinematics.add_child_module(theOtherModule.ModelName, new_module.ModelName, 
+             parent_face, new_module_face, new_module.JointAngle)
+            (position, orientation) = self.Kinematics.get_module_position(new_module.ModelName)
+            print position
 
       self.updateModuleList()
       self.nameIncrement()
