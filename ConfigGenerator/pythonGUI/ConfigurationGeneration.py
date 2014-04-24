@@ -365,7 +365,7 @@ class App(Frame):
     def checkConnectivity(self,*args):
       # print "Check the connectivity"
       themodule = self.findModule(self.connectedmodelvar.get())
-      if len(themodule.nodes[0]) != 0:
+      if len(themodule.nodes[3]) != 0:
         self.Back_face2["state"] = DISABLED
       else:
         self.Back_face2["state"] = NORMAL
@@ -380,7 +380,7 @@ class App(Frame):
       else:
         self.right_face2["state"] = NORMAL
         self.right_face2.select()
-      if len(themodule.nodes[3]) != 0:
+      if len(themodule.nodes[0]) != 0:
         self.front_face2["state"] = DISABLED
       else:
         self.front_face2["state"] = NORMAL
