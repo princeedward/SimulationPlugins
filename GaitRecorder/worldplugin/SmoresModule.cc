@@ -1,14 +1,9 @@
 #include "SmoresModule.hh"
 
-SpecialCommand::SpecialCommand()
-{
-	CommandType = 0;
-}
 CommandPro::CommandPro()
 {
 	TimeInterval = 0;	// Not a time based command
 	CommandGroup = 0; 
-	SpecialCommandFlag = false;
 	// FinishTimeReccorderMS = 0;
 	// FinishTimeReccorderS = 0;
 }

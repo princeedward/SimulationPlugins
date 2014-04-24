@@ -40,6 +40,32 @@ bool CollisionInformation::SameCollision(string collision1, string collision2, s
   return same_collision;
 }
 
+PoseRecord::PoseRecord()
+{
+  for (int i = 0; i < 4; ++i)
+  {
+    JointAngles[i] = 0;
+  }
+}
+
+PoseRecord::PoseRecord(double joint0, double joint1, double joint2, double joint3, math::Pose pos)
+{
+  JointAngles[0] = joint0;
+  JointAngles[1] = joint1;
+  JointAngles[2] = joint2;
+  JointAngles[3] = joint3;
+  Position = pos;
+}
+
+void PoseRecord::UpdateJoints(double joint0, double joint1, double joint2, double joint3, math::Pose pos)
+{
+  JointAngles[0] = joint0;
+  JointAngles[1] = joint1;
+  JointAngles[2] = joint2;
+  JointAngles[3] = joint3;
+  Position = pos;
+}
+
 ControlCenter::ControlCenter()
 {
   numOfModules = 0;
@@ -49,6 +75,7 @@ ControlCenter::ControlCenter()
   insertModuleFlag = true;
   // this->FinishFlag = false;
   AlreadyBuild = false;
+  // LastGaitMode = false;
 
   // All code below this line is for testing
 }
@@ -65,6 +92,13 @@ void ControlCenter::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
   // Create a publisher on the ~/physics topic
   this->statePub = node->Advertise<msgs::GzString>("~/Welcome");
 
+  transport::NodePtr nodeGait(new transport::Node());
+  nodeGait->Init("GaitRecorder");
+  string topicName = "~/gaitSubscriber";
+  this->GaitToolSub = nodeGait->Subscribe(topicName,&ControlCenter::GaitRecorderMessageDecoding, this);
+  cout<<"World: subscriber topic: "<<this->GaitToolSub->GetTopic()<<endl;
+  // /gazebo/GaitRecorder/gaitSubscriber
+
   // Set the step time
   // stateMsg.set_max_step_size(0.01);
 
@@ -76,30 +110,31 @@ void ControlCenter::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
 
   // math::Pose positionTMP(math::Vector3(0, 0, 0), math::Quaternion(1.57, 0, 0));
   // InsertModel("Module0", positionTMP);
+  cout<<"World: Begin to build initial configuration"<<endl;
   BuildConfigurationFromXML();
 
   // Here is the test for dynamic shared libraries
-  void *lib_handle;
-  char *error;
-  LibraryTemplate * (*mkr)();
+  // void *lib_handle;
+  // char *error;
+  // LibraryTemplate * (*mkr)();
 
-  lib_handle = dlopen("/home/edward/.gazebo/models/SMORES6Uriah/plugins/libSpiderController.so", RTLD_LAZY);
-  if (!lib_handle) 
-  {
-    fprintf(stderr, "%s\n", dlerror());
-    exit(1);
-  }
+  // lib_handle = dlopen("/home/edward/.gazebo/models/SMORES6Uriah/plugins/libSpiderController.so", RTLD_LAZY);
+  // if (!lib_handle) 
+  // {
+  //   fprintf(stderr, "%s\n", dlerror());
+  //   exit(1);
+  // }
 
-  // void *mkr = dlsym(lib_handle, "maker");
-  mkr = (LibraryTemplate * (*)())dlsym(lib_handle, "maker");
-  if ((error = dlerror()) != NULL)  
-  {
-    fprintf(stderr, "%s\n", error);
-    exit(1);
-  }
+  // // void *mkr = dlsym(lib_handle, "maker");
+  // mkr = (LibraryTemplate * (*)())dlsym(lib_handle, "maker");
+  // if ((error = dlerror()) != NULL)  
+  // {
+  //   fprintf(stderr, "%s\n", error);
+  //   exit(1);
+  // }
 
-  LibraryTemplate *Spider = mkr();
-  Spider->WhenRunning();
+  // LibraryTemplate *Spider = mkr();
+  // Spider->WhenRunning();
 }
 
 void ControlCenter::addEntity2World(std::string & _info)
@@ -196,13 +231,13 @@ void ControlCenter::BuildConfigurationFromXML(void)
   doc.parse<0>(xmlFile.data());
   // cout<<"World: first node is "<<doc.first_node()->name()<<endl;
   xml_node<> *modlue_node = doc.first_node("configuration")->first_node("modules")->first_node("module");
-  // cout<<"World: modlue_node is "<<modlue_node->first_node("name")->value()<<endl;
+  cout<<"World: modlue_node is "<<modlue_node->first_node("name")->value()<<endl;
   while (modlue_node)
   {
     string module_name = modlue_node->first_node("name")->value();
-    // cout<<"World: XML: Module name: "<<module_name<<endl;
+    cout<<"World: XML: Module name: "<<module_name<<endl;
     string position_string = modlue_node->first_node("position")->value();
-    // cout<<"World: XML: position: "<<position_string<<endl;
+    cout<<"World: XML: position: "<<position_string<<endl;
     double coordinates[3] = {0};
     for (int i = 0; i < 3; ++i)
     {
@@ -262,6 +297,126 @@ void ControlCenter::BuildConnectionFromXML(void)
     ActiveConnection(Model1Ptr,Model2Ptr,node1_ID,node2_ID, angle, distance);
 
     connection_node = connection_node->next_sibling();
+  }
+}
+
+void ControlCenter::GaitRecorderMessageDecoding(GaitRecMessagePtr &msg)
+{
+  string modelname = msg->modelname();
+  bool beginanewframe = msg->newframe();
+  bool playmode = msg->playstatus();
+  if (beginanewframe)
+  {
+    // FrameInitialPosition = referenceModule->ModuleObject->GetLink("CircuitHolder")->GetWorldPose();
+    RecordCurrentPose(FrameInitialJoints);
+    return;
+  }
+  // Reset the position
+  if (msg->has_resetflag())
+  {
+    // Reset the robot position
+    if (msg->resetflag())
+    {
+      SetPose(FrameInitialJoints);
+    }
+    // bool flags[4] = {true,true,true,true};
+    // double joints_values[4] = {0,0,0,0};
+    // joints_values[0] = msg->jointangles(0);
+    // joints_values[1] = msg->jointangles(1);
+    // joints_values[2] = msg->jointangles(2);
+    // joints_values[3] = msg->jointangles(3);
+    // int group_num = msg->groupincr();
+    // unsigned int time_interval = msg->timer();
+    // SendGaitTable(GetModulePtrByName(modelname), flags, joints_values, group_num, time_interval);
+    // LastGaitMode = true;
+  }else{
+    // Sending gait table commands
+    if (playmode)
+    {
+      // Disconnect Two Model
+      if (msg->has_extrinfo())
+      {
+        string extrainfo = msg->extrinfo();
+        if (extrainfo.substr(0,1).compare("+")==0 || extrainfo.substr(0,1).compare("-")==0)
+        {
+          bool connect = true;
+          if (extrainfo.substr(0,1).compare("-")==0)
+          {
+            connect = false;
+          }
+          extrainfo = extrainfo.substr(2);
+          string modulename1 = extrainfo.substr(0,extrainfo.find(" "));
+          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+          string modulename2 = extrainfo.substr(0,extrainfo.find(" "));
+          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+          int node1 = atoi(extrainfo.substr(0,extrainfo.find(" ")).c_str());
+          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+          int node2 = atoi(extrainfo.c_str());
+          if (connect)
+          {
+            ActiveConnection(GetModulePtrByName(modulename1), GetModulePtrByName(modulename2), node1, node2);
+          }else{
+            Deconnection(modulename1, modulename2);
+          }
+          return;
+        }
+      }
+      bool flags[4] = {true,true,true,true};
+      double joints_values[4] = {0,0,0,0};
+      joints_values[0] = msg->jointangles(0);
+      joints_values[1] = msg->jointangles(1);
+      joints_values[2] = msg->jointangles(2);
+      joints_values[3] = msg->jointangles(3);
+      int group_num = msg->groupincr();
+      unsigned int time_interval = msg->timer();
+      SendGaitTable(GetModulePtrByName(modelname), flags, joints_values, group_num, time_interval);
+    }
+    // User specify a joint angle
+    if (!playmode)
+    {
+      // Disconnect Two Model
+      if (msg->has_extrinfo())
+      {
+        string extrainfo = msg->extrinfo();
+        if (extrainfo.substr(0,1).compare("+")==0 || extrainfo.substr(0,1).compare("-")==0)
+        {
+          bool connect = true;
+          if (extrainfo.substr(0,1).compare("-")==0)
+          {
+            connect = false;
+          }
+          extrainfo = extrainfo.substr(2);
+          string modulename1 = extrainfo.substr(0,extrainfo.find(" "));
+          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+          string modulename2 = extrainfo.substr(0,extrainfo.find(" "));
+          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+          int node1 = atoi(extrainfo.substr(0,extrainfo.find(" ")).c_str());
+          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+          int node2 = atoi(extrainfo.c_str());
+          if (connect)
+          {
+            ActiveConnection(GetModulePtrByName(modulename1), GetModulePtrByName(modulename2), node1, node2);
+          }else{
+            Deconnection(modulename1, modulename2);
+          }
+          return;
+        }
+      }
+      bool flags[4] = {true,true,true,true};
+      double joints_values[4] = {0,0,0,0};
+      joints_values[0] = msg->jointangles(0);
+      joints_values[1] = msg->jointangles(1);
+      joints_values[2] = msg->jointangles(2);
+      joints_values[3] = msg->jointangles(3);
+      SendGaitTableInstance(GetModulePtrByName(modelname), flags, joints_values,3);
+      cout<<"World: model problem: "<<modelname<<endl;
+      currentWorld->GetModel(modelname)->GetJoint("Front_wheel_hinge")->SetAngle(0,msg->jointangles(0));
+      currentWorld->GetModel(modelname)->GetJoint("Left_wheel_hinge")->SetAngle(0,msg->jointangles(1));
+      currentWorld->GetModel(modelname)->GetJoint("Right_wheel_hinge")->SetAngle(0,msg->jointangles(2));
+      currentWorld->GetModel(modelname)->GetJoint("Center_hinge")->SetAngle(0,msg->jointangles(3));
+      // SendGaitTableInstance(GetModulePtrByName(modelname), flags, joints_values,3);
+      // LastGaitMode = false;
+    }
   }
 }
 
@@ -340,11 +495,14 @@ void ControlCenter::FeedBackMessageDecoding(CommandMessagePtr &msg)
         // Confiuration connection initialized
         BuildConnectionFromXML();
         cout<<"World: Build the connection"<<endl;
+        // Record the initialposition
+        // GlobalInitialPosition = moduleList.at(0)->ModuleObject->GetLink("CircuitHolder")->GetWorldPose();
+        RecordCurrentPose(GlobalInitialJoints);
         // This line is a test, please delete in the future
-        readFileAndGenerateCommands("Commands");
-        cout<<"World: Command been sent"<<endl;
+        // readFileAndGenerateCommands("Commands");
+        // cout<<"World: Command been sent"<<endl;
         // Need one right after readcommands function
-        currentCommandGroupInitialization();
+        // currentCommandGroupInitialization();
       }
       InitalJointValue.erase(InitalJointValue.begin());
       InitialPosition.erase(InitialPosition.begin());
@@ -817,13 +975,7 @@ void ControlCenter::CommandManager(void)
           if (ModuleCommandContainer.at(i)->CommandSquence.size()>=2 && ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup == ModuleCommandContainer.at(i)->CommandSquence.at(1).CommandGroup)
           {
             ModuleCommandContainer.at(i)->FinishedFlag = true;
-            if (ModuleCommandContainer.at(i)->CommandSquence.at(0).SpecialCommandFlag)
-            {
-              ModuleCommandContainer.at(i)->CurrentPriority = 0;
-            }else
-            {
-              ModuleCommandContainer.at(i)->CurrentPriority = ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage->priority();
-            }
+            ModuleCommandContainer.at(i)->CurrentPriority = ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage->priority();
           }
         }
       }
@@ -835,20 +987,7 @@ void ControlCenter::CommandManager(void)
           if (ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup == CurrentCommandGroup)
           {
             // cout<<"World: Still can get in here"<<endl;
-            if (ModuleCommandContainer.at(i)->CommandSquence.at(0).SpecialCommandFlag)
-            {
-              if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 1)
-              {
-                ActiveConnection(ModuleCommandContainer.at(i)->WhichModule, GetModulePtrByName(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2), ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node2);
-              }
-              if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 2)
-              {
-                Deconnection(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2);
-              }
-            }else
-            {
-              ModuleCommandContainer.at(i)->WhichModule->ModulePublisher->Publish(*(ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage));
-            }
+            ModuleCommandContainer.at(i)->WhichModule->ModulePublisher->Publish(*(ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage));
             // cout<<"World: Message to '"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<"' set joint angle 3 to : "<<ModuleCommandContainer.at(i)->CommandSquence.at(0)->jointgaittable(3)<<endl;
             // cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
             ModuleCommandContainer.at(i)->ExecutionFlag = true;
@@ -911,7 +1050,6 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double g
   CommandPro aNewMessage;
   aNewMessage.ActualCommandMessage = ConnectionMessage;
   aNewMessage.TimeInterval = time_stamp;
-  aNewMessage.SpecialCommandFlag = false;
   //----------------------------------------------------------------------------
 
   // -------------- Patch for ordered group gait table ------------------------
@@ -964,8 +1102,7 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double g
     new_command_message->CommandSquence.push_back(aNewMessage);
     ModuleCommandContainer.push_back(new_command_message);
     module->ModuleCommandContainer = new_command_message;
-  }else
-  {
+  }else{
     if (group == 0)
     {
       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
@@ -1039,132 +1176,6 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, int joint_ID, double g
   flag[joint_ID] = true;
   gait_values[joint_ID] = gait_value;
   SendGaitTable(module, flag, gait_values, priority, msg_type);
-}
-// This command used to invoke disconnect command
-void ControlCenter::SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, int group)
-{
-  CommandPro aNewMessage;
-  // aNewMessage.ActualCommandMessage = ConnectionMessage;
-  aNewMessage.TimeInterval = 0;
-  aNewMessage.SpecialCommandFlag = true;
-  aNewMessage.Command.CommandType = commandtype;
-  aNewMessage.Command.Module1 = module1;
-  aNewMessage.Command.Module2 = module2;
-  aNewMessage.Command.Node1 = node1;
-  aNewMessage.Command.Node2 = node2;
-
-  int priority = 0;
-
-  int min_group = MAX_COMMANDGROUP_LENGTH+1;
-  for (unsigned int i = 0; i <moduleList.size();++i)
-  {
-    if (moduleList.at(i)->ModuleCommandContainer)
-    {
-      if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
-      {
-        min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
-      }
-    }
-  }
-  if (min_group == MAX_COMMANDGROUP_LENGTH+1)
-  {
-    min_group = 0;
-  }  
-
-  if (!module->ModuleCommandContainer)
-  {
-    ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-    if (group <= 0)
-    {
-      aNewMessage.CommandGroup = min_group;
-    }else{
-      aNewMessage.CommandGroup = min_group + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup = aNewMessage.CommandGroup-MAX_COMMANDGROUP_LENGTH-1;
-        if (group != 1)
-        {
-          CommandPtr ConnectionMessageTmp(new command_message::msgs::CommandMessage());
-          ConnectionMessageTmp->set_messagetype(3);
-          ConnectionMessageTmp->set_priority(0);
-          for (int i = 0; i < 4; ++i)
-          {
-            ConnectionMessageTmp->add_jointgaittablestatus(0);
-            ConnectionMessageTmp->add_jointgaittable(0);
-          }
-          CommandPro TmpNewMessage;
-          TmpNewMessage.ActualCommandMessage = ConnectionMessageTmp;
-          TmpNewMessage.TimeInterval = 0;
-          TmpNewMessage.CommandGroup = MAX_COMMANDGROUP_LENGTH;
-          new_command_message->CommandSquence.push_back(TmpNewMessage);
-        }
-      }
-    }
-    // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-    new_command_message->CommandSquence.push_back(aNewMessage);
-    ModuleCommandContainer.push_back(new_command_message);
-    module->ModuleCommandContainer = new_command_message;
-  }else
-  {
-    if (group == 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
-      if (priority == 0)
-      {
-        module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          if (priority > module->ModuleCommandContainer->CommandSquence.at(i).ActualCommandMessage->priority() && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup == aNewMessage.CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    if (group > 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup -= MAX_COMMANDGROUP_LENGTH - 1;
-      }
-      module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-    }
-    if (group < 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if(aNewMessage.CommandGroup<0)
-      {
-        aNewMessage.CommandGroup += MAX_COMMANDGROUP_LENGTH + 1;
-      }
-      if (aNewMessage.CommandGroup < min_group)
-      {
-        aNewMessage.CommandGroup = min_group;
-      }
-      if (module->ModuleCommandContainer->CommandSquence.front().CommandGroup>aNewMessage.CommandGroup)
-      {
-        module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin(),aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          // Haven't implement priority
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= module->ModuleCommandContainer->CommandSquence.back().CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    // --------------------------------------------------------------------------
-  }
 }
 
 void ControlCenter::SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group, unsigned int time_stamp, int priority)
@@ -1517,86 +1528,93 @@ unsigned int ControlCenter::CountModules(SmoresModulePtr module)
   return module_count;
 }
 
-void ControlCenter::readFileAndGenerateCommands(const char* fileName)
+// void ControlCenter::readFileAndGenerateCommands(const char* fileName)
+// {
+//   string output;
+//   ifstream infile;
+//   infile.open(fileName);
+//   int smallcount = 0;
+//   double joints_values[4] = {0,0,0,0};
+//   bool flags[4] = {true,true,true,true};
+//   // int model_number;
+//   string model_name;
+//   int group_num = 0;
+//   unsigned int time_interval = 0;
+//   if (infile.is_open()) {
+//     while (!infile.eof()) {
+//       infile >> output;
+//       // cout<<output<<endl;
+//       switch(smallcount){
+//         // case 0:model_number = atoi(output.c_str());break;
+//         case 0:model_name = output.c_str();break;
+//         case 1:joints_values[0] = atof(output.c_str());break;
+//         case 2:joints_values[1] = atof(output.c_str());break;
+//         case 3:joints_values[2] = atof(output.c_str());break;
+//         case 4:joints_values[3] = atof(output.c_str());break;
+//         case 5:group_num = atoi(output.c_str());break;
+//         case 6:time_interval = atoi(output.c_str());break;
+//       }
+//       smallcount++;
+//       if (smallcount == 7)
+//       {
+//         smallcount=0;
+//         SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, group_num, time_interval);
+//       }
+//     }
+//   }
+//   infile.close();
+// }
+
+// void ControlCenter::currentCommandGroupInitialization(void)
+// {
+//   int min_group = MAX_COMMANDGROUP_LENGTH+1;
+//   for (unsigned int i = 0; i <moduleList.size();++i)
+//   {
+//     if (moduleList.at(i)->ModuleCommandContainer)
+//     {
+//       if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
+//       {
+//         min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
+//       }
+//     }
+//   }
+//   CurrentCommandGroup = min_group;
+// }
+
+void ControlCenter::RecordCurrentPose(vector<PoseRecord>& JointRecSeq)
 {
-  string output;
-  ifstream infile;
-  infile.open(fileName);
-  int smallcount = 0;
-  double joints_values[4] = {0,0,0,0};
-  bool flags[4] = {true,true,true,true};
-  // int model_number;
-  string model_name;
-  int group_num = 0;
-  unsigned int time_interval = 0;
-  if (infile.is_open()) {
-    while (!infile.eof()) {
-      infile >> output;
-      // cout<<output<<endl;
-      if (smallcount == 0 && (output.compare("+")==0 || output.compare("-")==0))
-      {
-        bool Connect = true;
-        if (output.compare("-")==0)
-        {
-          Connect = false;
-        }
-        infile >> output;
-        string module_1 = output;
-        infile >> output;
-        string module_2 = output;
-        infile >> output;
-        int node_1 = atoi(output.c_str());
-        infile >> output;
-        int node_2 = atoi(output.c_str());
-        infile >> output;
-        int groupnum = atoi(output.c_str());
-        if (Connect)
-        {
-          SendGaitTable(GetModulePtrByName(module_1), module_1, module_2, node_1, node_2, 1, groupnum);
-        }else
-        {
-          SendGaitTable(GetModulePtrByName(module_1), module_1, module_2, node_1, node_2, 2, groupnum);
-        }
-        smallcount = 0;
-      }else
-      {
-        switch(smallcount){
-          // case 0:model_number = atoi(output.c_str());break;
-          case 0:model_name = output.c_str();break;
-          case 1:joints_values[0] = atof(output.c_str());break;
-          case 2:joints_values[1] = atof(output.c_str());break;
-          case 3:joints_values[2] = atof(output.c_str());break;
-          case 4:joints_values[3] = atof(output.c_str());break;
-          case 5:group_num = atoi(output.c_str());break;
-          case 6:time_interval = atoi(output.c_str());break;
-        }
-        smallcount++;
-        if (smallcount == 7)
-        {
-          smallcount=0;
-          SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, group_num, time_interval);
-        }
-      }
+  for (unsigned int i = 0; i < moduleList.size(); ++i)
+  {
+    double joint0 = moduleList.at(i)->ModuleObject->GetJoint("Front_wheel_hinge")->GetAngle(0).Radian();
+    double joint1 = moduleList.at(i)->ModuleObject->GetJoint("Left_wheel_hinge")->GetAngle(0).Radian();
+    double joint2 = moduleList.at(i)->ModuleObject->GetJoint("Right_wheel_hinge")->GetAngle(0).Radian();
+    double joint3 = moduleList.at(i)->ModuleObject->GetJoint("Center_hinge")->GetAngle(0).Radian();
+    math::Pose currentmodel = moduleList.at(i)->ModuleObject->GetWorldPose();
+    if (i < JointRecSeq.size())
+    {
+      JointRecSeq.at(i).UpdateJoints(joint0,joint1,joint2,joint3,currentmodel);
+    }else{
+      PoseRecord newRecord(joint0,joint1,joint2,joint3,currentmodel);
+      JointRecSeq.push_back(newRecord);
     }
   }
-  infile.close();
 }
 
-void ControlCenter::currentCommandGroupInitialization(void)
+void ControlCenter::SetPose(vector<PoseRecord>& JointRecSeq)
 {
-  int min_group = MAX_COMMANDGROUP_LENGTH+1;
-  for (unsigned int i = 0; i <moduleList.size();++i)
+  // moduleList.at(0)->ModuleObject->SetLinkWorldPose(referencepose, moduleList.at(0)->ModuleObject->GetLink("CircuitHolder"));
+  for (unsigned int i = 0; i < JointRecSeq.size(); ++i)
   {
-    if (moduleList.at(i)->ModuleCommandContainer)
-    {
-      if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
-      {
-        min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
-      }
-    }
+    bool flags[4] = {true,true,true,true};
+    SendGaitTableInstance(moduleList.at(i), flags,JointRecSeq.at(i).JointAngles, 3);
+    // SendGaitTable(moduleList.at(i), flags, JointRecSeq.at(i).JointAngles);
+    moduleList.at(i)->ModuleObject->GetJoint("Front_wheel_hinge")->SetAngle(0,JointRecSeq.at(i).JointAngles[0]);
+    moduleList.at(i)->ModuleObject->GetJoint("Left_wheel_hinge")->SetAngle(0,JointRecSeq.at(i).JointAngles[1]);
+    moduleList.at(i)->ModuleObject->GetJoint("Right_wheel_hinge")->SetAngle(0,JointRecSeq.at(i).JointAngles[2]);
+    moduleList.at(i)->ModuleObject->GetJoint("Center_hinge")->SetAngle(0,JointRecSeq.at(i).JointAngles[3]);
+    moduleList.at(i)->ModuleObject->SetWorldPose(JointRecSeq.at(i).Position);
   }
-  CurrentCommandGroup = min_group;
 }
-    
+
 // Register this plugin with the simulator
 GZ_REGISTER_WORLD_PLUGIN(ControlCenter)

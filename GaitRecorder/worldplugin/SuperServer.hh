@@ -17,13 +17,14 @@
 // Libraries for messages needed to use to communicate between plugins
 #include "collision_message_plus.pb.h"
 // #include "command_message.pb.h"
+#include "gait_recorder_message.pb.h"
 // Libraries for connectivity representation
 #include "SmoresModule.hh"
 // XML paser library
 #include "rapidxml.hpp"
 #include "rapidxml_utils.hpp"
 
-#include "LibraryTemplate.hh"
+// #include "LibraryTemplate.hh"
 
 #define PI 3.141593   // 3.1411593
 #define VALIDCONNECTIONDISUPPER 0.110
@@ -36,8 +37,9 @@ using namespace rapidxml;
 
 namespace gazebo
 {
-	typedef const boost::shared_ptr<const collision_message_plus::msgs::CollisionMessage> CollisionMessagePtr;
+  typedef const boost::shared_ptr<const collision_message_plus::msgs::CollisionMessage> CollisionMessagePtr;
   typedef const boost::shared_ptr<const command_message::msgs::CommandMessage> CommandMessagePtr;
+  typedef const boost::shared_ptr<const gait_recorder_message::msgs::GaitRecMessage> GaitRecMessagePtr;
 
   class CollisionInformation
   {
@@ -53,6 +55,17 @@ namespace gazebo
     string Model2;
     string LinkOfModel1;
     string LinkofModel2;
+  };
+
+  class PoseRecord
+  {
+  public:
+    PoseRecord();
+    PoseRecord(double joint0, double joint1, double joint2, double joint3, math::Pose pos);
+    void UpdateJoints(double joint0, double joint1, double joint2, double joint3, math::Pose pos);
+  public:
+    double JointAngles[4];
+    math::Pose Position;
   };
 
   class ControlCenter : public WorldPlugin
@@ -77,6 +90,11 @@ namespace gazebo
     // This function is used to build connection using a XML file
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     private: void BuildConnectionFromXML(void);
+
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // This function will be called everytime receive gait tool information
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    private: void GaitRecorderMessageDecoding(GaitRecMessagePtr &msg);
 
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // This function will be called everytime receive command information
@@ -132,8 +150,6 @@ namespace gazebo
     public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
  
     public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
-
-    public: void SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, int group);
 
     public: void SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group = 0, unsigned int time_stamp = 0, int priority = 0);
     
@@ -195,13 +211,18 @@ namespace gazebo
     private: unsigned int CountModules(SmoresModulePtr module);
     
     // This function is only for demonstration
-    void readFileAndGenerateCommands(const char* fileName);
+    // void readFileAndGenerateCommands(const char* fileName);
 
-    void currentCommandGroupInitialization(void);
+    // void currentCommandGroupInitialization(void);
+
+    void RecordCurrentPose(vector<PoseRecord>& JointRecSeq);
+
+    void SetPose(vector<PoseRecord>& JointRecSeq);
 
     private: physics::WorldPtr currentWorld;
     private: event::ConnectionPtr addEntityConnection;
     private: transport::PublisherPtr statePub;
+    private: transport::SubscriberPtr GaitToolSub;
     // private: vector<transport::PublisherPtr> WorldPublisher;
     private: vector<transport::SubscriberPtr> WorldColSubscriber;
     // The pointer vector for all the models in the world
@@ -223,6 +244,11 @@ namespace gazebo
     private: vector<ModuleCommandsPtr> ModuleCommandContainer;
     private: int CurrentCommandGroup;
     private: int CurrentMinimalGroup;
+    // private: math::Pose GlobalInitialPosition;
+    private: vector<PoseRecord> GlobalInitialJoints;
+    // private: math::Pose FrameInitialPosition;
+    private: vector<PoseRecord> FrameInitialJoints;
+    // private: bool LastGaitMode;
     //+++++++++ testing ++++++++++++++++++++++++++++
     private: int infoCounter;
     private: int numOfModules;

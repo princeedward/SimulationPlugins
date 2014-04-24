@@ -11,16 +11,6 @@ using namespace std;
 using namespace gazebo;
 
 typedef boost::shared_ptr<command_message::msgs::CommandMessage> CommandPtr;
-struct SpecialCommand
-{
-	// CommandType: 0 no special command; 1 connect; 2 disconnect
-	int CommandType;
-	string Module1;
-	string Module2;
-	int Node1;
-	int Node2;
-	SpecialCommand();
-};
 struct CommandPro 	// abbr for Command protocol
 {
 	CommandPtr ActualCommandMessage;
@@ -28,8 +18,6 @@ struct CommandPro 	// abbr for Command protocol
 	int CommandGroup;		// Maximum length: 5000
 	// unsigned int FinishTimeReccorderMS;
 	// unsigned int FinishTimeReccorderS;
-	bool SpecialCommandFlag;
-	SpecialCommand Command;
 	CommandPro();
 };
 
