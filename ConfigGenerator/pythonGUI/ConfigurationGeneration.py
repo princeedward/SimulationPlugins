@@ -117,10 +117,10 @@ class App(Frame):
         label3 = Label(f1, image=bardejov)
         label3.image = bardejov
         label3.place(x=90, y=140)
-        Back_face = Radiobutton(f1, text='Back Face', variable=self.Node1, value=0)
+        Back_face = Radiobutton(f1, text='Back Face', variable=self.Node1, value=3)
         left_face = Radiobutton(f1, text='Left Face', variable=self.Node1, value=1)
         right_face = Radiobutton(f1, text='Right Face', variable=self.Node1, value=2)
-        front_face = Radiobutton(f1, text='Front Face', variable=self.Node1, value=3)
+        front_face = Radiobutton(f1, text='Front Face', variable=self.Node1, value=0)
         front_face.select()
         Back_face.place(x= 120, y = 120,anchor = CENTER)
         front_face.place(x= 120, y = 250,anchor = CENTER)
@@ -133,10 +133,10 @@ class App(Frame):
         label5 = Label(f1, image=bardejov)
         label5.image = bardejov
         label5.place(x=380, y=140)
-        self.Back_face2 = Radiobutton(f1, text='Back Face', variable=self.Node2, value=0)
+        self.Back_face2 = Radiobutton(f1, text='Back Face', variable=self.Node2, value=3)
         self.left_face2 = Radiobutton(f1, text='Left Face', variable=self.Node2, value=1)
         self.right_face2 = Radiobutton(f1, text='Right Face', variable=self.Node2, value=2)
-        self.front_face2 = Radiobutton(f1, text='Front Face', variable=self.Node2, value=3)
+        self.front_face2 = Radiobutton(f1, text='Front Face', variable=self.Node2, value=0)
         self.front_face2.select()
         self.Back_face2.place(x= 410, y = 120,anchor = CENTER)
         self.front_face2.place(x= 410, y = 250,anchor = CENTER)
@@ -301,8 +301,17 @@ class App(Frame):
         print "Method is Connection"
         theOtherModule = self.findModule(self.connectedmodelvar.get())
         if theOtherModule:
-          module_position = self.CalculatePosition()
           module_jointangle = (degree2rad(self.Joint0.get()),degree2rad(self.Joint1.get()),degree2rad(self.Joint2.get()),degree2rad(self.Joint3.get()))
+          #-- Add module to the kinematics, and get position and orientation.
+          parent_face = self.Node2.get()
+          new_module_face = self.Node1.get()
+          self.Kinematics.add_child_module(theOtherModule.ModelName, self.modelname.get(), 
+            parent_face, new_module_face, module_jointangle)
+          #module_position = self.CalculatePosition()
+          module_position = self.Kinematics.get_module_position(self.modelname.get())
+          print 'XYZ: ' + str(module_position[0:3])
+          print 'RPY: ' + str(module_position[3:6])
+          # --
           new_module = Module(self.modelname.get(),module_position,module_jointangle)
           self.ModuleList.append(new_module)
           print "Connected module name",self.connectedmodelvar.get()
