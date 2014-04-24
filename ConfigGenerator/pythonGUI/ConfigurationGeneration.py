@@ -442,6 +442,7 @@ class App(Frame):
     def WriteFile(self):
       f = open("InitialConfiguration", 'w')
       lines = ['<?xml version="1.0" encoding="UTF-8"?>\n']
+      lines.append('<configuration>\n')
       lines.append('<modules>\n')
       for eachmodule in self.ModuleList:
         lines.append('\t<module>\n')
@@ -460,7 +461,8 @@ class App(Frame):
         lines.append('\t\t<distance>'+str(eachconnection.Distance)+'</distance>\n')
         lines.append('\t\t<angle>'+str(eachconnection.Angle)+'</angle>\n')
         lines.append('\t</connection>\n')
-      lines.append('</connections>')
+      lines.append('</connections>\n')
+      lines.append('</configuration>')
       f.writelines(lines)
       f.close()
       self.saveButton["state"] = DISABLED
