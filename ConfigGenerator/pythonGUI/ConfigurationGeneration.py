@@ -117,10 +117,10 @@ class App(Frame):
         label3 = Label(f1, image=bardejov)
         label3.image = bardejov
         label3.place(x=90, y=140)
-        Back_face = Radiobutton(f1, text='Back Face', variable=self.Node1, value=0)
+        Back_face = Radiobutton(f1, text='Back Face', variable=self.Node1, value=3)
         left_face = Radiobutton(f1, text='Left Face', variable=self.Node1, value=1)
         right_face = Radiobutton(f1, text='Right Face', variable=self.Node1, value=2)
-        front_face = Radiobutton(f1, text='Front Face', variable=self.Node1, value=3)
+        front_face = Radiobutton(f1, text='Front Face', variable=self.Node1, value=0)
         front_face.select()
         Back_face.place(x= 120, y = 120,anchor = CENTER)
         front_face.place(x= 120, y = 250,anchor = CENTER)
@@ -133,10 +133,10 @@ class App(Frame):
         label5 = Label(f1, image=bardejov)
         label5.image = bardejov
         label5.place(x=380, y=140)
-        self.Back_face2 = Radiobutton(f1, text='Back Face', variable=self.Node2, value=0)
+        self.Back_face2 = Radiobutton(f1, text='Back Face', variable=self.Node2, value=3)
         self.left_face2 = Radiobutton(f1, text='Left Face', variable=self.Node2, value=1)
         self.right_face2 = Radiobutton(f1, text='Right Face', variable=self.Node2, value=2)
-        self.front_face2 = Radiobutton(f1, text='Front Face', variable=self.Node2, value=3)
+        self.front_face2 = Radiobutton(f1, text='Front Face', variable=self.Node2, value=0)
         self.front_face2.select()
         self.Back_face2.place(x= 410, y = 120,anchor = CENTER)
         self.front_face2.place(x= 410, y = 250,anchor = CENTER)
@@ -312,6 +312,10 @@ class App(Frame):
           theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
           if self.ServerConnected == 1:
             self.PublishMessage(self.ModuleList[-1])
+        self.Kinematics.add_child_module(theOtherModule.ModelName, new_module.ModelName, 
+            self.Node1.get(), self.Node2.get(), new_module.JointAngle)
+        (position, orientation) = self.Kinematics.get_module_position(new_module.ModelName)
+        print position
 
       self.updateModuleList()
       self.nameIncrement()
