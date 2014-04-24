@@ -18,7 +18,7 @@ class SmoresKinematics(object):
 		assert self.module_list == None
 		assert self.name_mapping == None
 		self.name_mapping = {}
-		root_module = SmoresModule.SmoresModule( module_name, 0 )	# root module always rooted at node 0
+		root_module = SmoresModule.SmoresModule( module_name, 3 )	# root module always rooted at node 2
 		self.root_module = root_module
 		self.root_node = root_module.nodes[root_module.root_node_number]
 		self.name_mapping[module_name] = root_module
@@ -69,8 +69,12 @@ class SmoresKinematics(object):
 		joint1 to node 2, joint2 to node 3, and joint3 to node 4.  See schematic in
 		SmoresModule.py.'''
 		nodemap = [0,2,3,4]
-		for i in xrange(1,4):
-			edge = module.nodes[nodemap[i]].parent_edge
+		for i in xrange(0,4):
+			nodenumber = nodemap[i]
+			if nodenumber == module.root_node_number:
+				edge = module.nodes[1].parent_edge
+			else:
+				edge = module.nodes[nodemap[i]].parent_edge
 			edge.current_angle = joint_angles[i]
 		return
 

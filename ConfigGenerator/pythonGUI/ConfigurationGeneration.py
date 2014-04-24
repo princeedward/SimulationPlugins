@@ -9,7 +9,7 @@ import eventlet  # need to install: $:sudo pip install eventlet
 from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
 from SimpleKL import CloseEnough, Connectable
-# from SmoresKinematics import SmoresKinematics
+from SmoresKinematics import SmoresKinematics
 import pdb
 # from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
 
@@ -32,7 +32,7 @@ class App(Frame):
         self.modulenameincrementrecorder = 0
         self.InsertMethod = StringVar()
         self.InsertMethod.set('Connection')
-        # self.Kinematics = SmoresKinematics()  # Computes kinematics
+        self.Kinematics = SmoresKinematics()  # Computes kinematics
         self.connectedmodelvar = StringVar()
         self.Node1 = IntVar()
         self.Node1.set(3)
@@ -294,7 +294,7 @@ class App(Frame):
         new_module = Module(self.modelname.get(),module_position,module_jointangle)
         self.ModuleList.append(new_module)
         # Add the module to the kinematic structure:
-        # self.Kinematics.add_root_module( new_module.ModelName, new_module.Position, new_module.JointAngle )
+        self.Kinematics.add_root_module( new_module.ModelName, new_module.Position, new_module.JointAngle )
         if self.ServerConnected == 1:
           self.PublishMessage(self.ModuleList[-1])
       else:
