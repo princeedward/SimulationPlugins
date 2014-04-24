@@ -301,8 +301,17 @@ class App(Frame):
         print "Method is Connection"
         theOtherModule = self.findModule(self.connectedmodelvar.get())
         if theOtherModule:
-          module_position = self.CalculatePosition()
           module_jointangle = (degree2rad(self.Joint0.get()),degree2rad(self.Joint1.get()),degree2rad(self.Joint2.get()),degree2rad(self.Joint3.get()))
+          #-- Add module to the kinematics, and get position and orientation.
+          parent_face = self.Node2.get()
+          new_module_face = self.Node1.get()
+          self.Kinematics.add_child_module(theOtherModule.ModelName, self.modelname.get(), 
+            parent_face, new_module_face, module_jointangle)
+          #module_position = self.CalculatePosition()
+          module_position = self.Kinematics.get_module_position(self.modelname.get())
+          print 'XYZ: ' + str(module_position[0:3])
+          print 'RPY: ' + str(module_position[3:6])
+          # --
           new_module = Module(self.modelname.get(),module_position,module_jointangle)
           self.ModuleList.append(new_module)
           print "Connected module name",self.connectedmodelvar.get()
@@ -312,13 +321,6 @@ class App(Frame):
           theOtherModule.connection(self.Node2.get(),self.ConnectionList[-1])
           if self.ServerConnected == 1:
             self.PublishMessage(self.ModuleList[-1])
-            # Add module to the kinematics
-            parent_face = self.Node2.get()
-            new_module_face = self.Node1.get()
-            self.Kinematics.add_child_module(theOtherModule.ModelName, new_module.ModelName, 
-             parent_face, new_module_face, new_module.JointAngle)
-            (position, orientation) = self.Kinematics.get_module_position(new_module.ModelName)
-            print position
 
       self.updateModuleList()
       self.nameIncrement()

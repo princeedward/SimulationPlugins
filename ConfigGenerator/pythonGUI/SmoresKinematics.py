@@ -58,9 +58,10 @@ class SmoresKinematics(object):
 		fk = ChainFkSolverPos_recursive(kdl_chain)
 		final_frame = Frame()
 		fk.JntToCart(joint_angles, final_frame)
-		# return position and rotation matrix of final frame
-		# TODO: make these into reasonable objects.
-		return (final_frame.p, final_frame.M)
+		# convert to a touple and return
+		xyz = final_frame.p
+		rpy = final_frame.M.GetRPY()
+		return ( xyz.x(), xyz.y(), xyz.z(), rpy[0], rpy[1], rpy[2] )
 
 	def set_joint_angles(self, module, joint_angles ):
 		''' sets the joint angles of the module to those specified.
