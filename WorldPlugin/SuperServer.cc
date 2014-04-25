@@ -1522,7 +1522,7 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
   string output;
   ifstream infile;
   infile.open(fileName);
-  int smallcount = 0;
+  int smallcount = 1000;
   double joints_values[4] = {0,0,0,0};
   bool flags[4] = {true,true,true,true};
   // int model_number;
