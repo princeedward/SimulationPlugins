@@ -40,6 +40,14 @@ bool CollisionInformation::SameCollision(string collision1, string collision2, s
   return same_collision;
 }
 
+Condition::Condition(string conditionID)
+{
+  this->condition_id = conditionID;
+  this->total_count = 1;
+  this->finished_count = 0;
+  this->achieved = false;
+}
+
 ControlCenter::ControlCenter()
 {
   numOfModules = 0;
@@ -297,7 +305,7 @@ void ControlCenter::FeedBackMessageDecoding(CommandMessagePtr &msg)
         if (command_for_current_module->ExecutionFlag)
         {
           command_for_current_module->FinishedFlag = true;
-          command_for_current_module->CurrentPriority = msg->priority();
+          // command_for_current_module->CurrentPriority = msg->priority();
           command_for_current_module->ExecutionFlag = false;
         }
       }
@@ -334,7 +342,7 @@ void ControlCenter::FeedBackMessageDecoding(CommandMessagePtr &msg)
       currentWorld->GetModel(msg->stringmessage())->GetJoint("Center_hinge")->SetAngle(0,joint_angles[3]);
       currentWorld->GetModel(msg->stringmessage())->SetLinkWorldPose(InitialPosition.at(0),currentWorld->GetModel(msg->stringmessage())->GetLink("CircuitHolder"));
 
-      SendGaitTable(GetModulePtrByName(msg->stringmessage()), flags, joint_angles);
+      SendGaitTableInstance(GetModulePtrByName(msg->stringmessage()), flags, joint_angles,3);
       if (InitalJointValue.size()==1)
       {
         // Confiuration connection initialized
@@ -344,7 +352,7 @@ void ControlCenter::FeedBackMessageDecoding(CommandMessagePtr &msg)
         readFileAndGenerateCommands("Commands");
         cout<<"World: Command been sent"<<endl;
         // Need one right after readcommands function
-        currentCommandGroupInitialization();
+        // currentCommandGroupInitialization();
       }
       InitalJointValue.erase(InitalJointValue.begin());
       InitialPosition.erase(InitialPosition.begin());
@@ -803,28 +811,18 @@ void ControlCenter::Deconnection(string moduleName1, string moduleName2)
 
 void ControlCenter::CommandManager(void)
 {
-  CurrentMinimalGroup = MAX_COMMANDGROUP_LENGTH + 1;
+  // CurrentMinimalGroup = MAX_COMMANDGROUP_LENGTH + 1;
   for (unsigned int i = 0; i < ModuleCommandContainer.size(); ++i)
   {
     if (ModuleCommandContainer.at(i)->CommandSquence.size()>0)
     {
-      // ---------------- This is a patch for time based gait table --------------------
-      if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval > 0)
+      if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
       {
-        ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval -= 1;
-        if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval == 0)
+        if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval <= 0)
         {
-          if (ModuleCommandContainer.at(i)->CommandSquence.size()>=2 && ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup == ModuleCommandContainer.at(i)->CommandSquence.at(1).CommandGroup)
-          {
-            ModuleCommandContainer.at(i)->FinishedFlag = true;
-            if (ModuleCommandContainer.at(i)->CommandSquence.at(0).SpecialCommandFlag)
-            {
-              ModuleCommandContainer.at(i)->CurrentPriority = 0;
-            }else
-            {
-              ModuleCommandContainer.at(i)->CurrentPriority = ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage->priority();
-            }
-          }
+          ModuleCommandContainer.at(i)->FinishedFlag = true;
+        }else{
+          ModuleCommandContainer.at(i)->FinishedFlag = false;
         }
       }
       // -------------------------------------------------------------------------------
@@ -832,7 +830,51 @@ void ControlCenter::CommandManager(void)
       {
         if (!ModuleCommandContainer.at(i)->ReceivedFlag)
         {
-          if (ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup == CurrentCommandGroup)
+          if (ModuleCommandContainer.at(i)->CommandSquence.at(0).ConditionOnOtherCommand)
+          {
+            if (CheckCondition(ModuleCommandContainer.at(i)->CommandSquence.at(0).Dependency))
+            {
+              // cout<<"World: Still can get in here"<<endl;
+              if (ModuleCommandContainer.at(i)->CommandSquence.at(0).SpecialCommandFlag)
+              {
+                if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 1)
+                {
+                  ActiveConnection(ModuleCommandContainer.at(i)->WhichModule, GetModulePtrByName(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2), ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node2);
+                  if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
+                  {
+                    ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                  }else
+                  {
+                    ModuleCommandContainer.at(i)->FinishedFlag = true;
+                    ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                  }
+                }
+                if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 2)
+                {
+                  Deconnection(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2);
+                  if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
+                  {
+                    ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                  }else
+                  {
+                    ModuleCommandContainer.at(i)->FinishedFlag = true;
+                    ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                  }
+                }
+              }else
+              {
+                ModuleCommandContainer.at(i)->WhichModule->ModulePublisher->Publish(*(ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage));
+              }
+              // cout<<"World: Message to '"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<"' set joint angle 3 to : "<<ModuleCommandContainer.at(i)->CommandSquence.at(0)->jointgaittable(3)<<endl;
+              // cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
+              ModuleCommandContainer.at(i)->ExecutionFlag = true;
+            }
+            // else
+            // {
+            //   ModuleCommandContainer.at(i)->FinishedFlag = false;
+            //   ModuleCommandContainer.at(i)->ReceivedFlag = false;
+            // }
+          }else
           {
             // cout<<"World: Still can get in here"<<endl;
             if (ModuleCommandContainer.at(i)->CommandSquence.at(0).SpecialCommandFlag)
@@ -840,10 +882,26 @@ void ControlCenter::CommandManager(void)
               if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 1)
               {
                 ActiveConnection(ModuleCommandContainer.at(i)->WhichModule, GetModulePtrByName(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2), ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node2);
+                if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
+                {
+                  ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                }else
+                {
+                  ModuleCommandContainer.at(i)->FinishedFlag = true;
+                  ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                }
               }
               if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 2)
               {
                 Deconnection(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2);
+                if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
+                {
+                  ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                }else
+                {
+                  ModuleCommandContainer.at(i)->FinishedFlag = true;
+                  ModuleCommandContainer.at(i)->ReceivedFlag = true;
+                }
               }
             }else
             {
@@ -852,24 +910,25 @@ void ControlCenter::CommandManager(void)
             // cout<<"World: Message to '"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<"' set joint angle 3 to : "<<ModuleCommandContainer.at(i)->CommandSquence.at(0)->jointgaittable(3)<<endl;
             // cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
             ModuleCommandContainer.at(i)->ExecutionFlag = true;
-          } 
-        }
-        if (CurrentMinimalGroup > ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup)
+          }
+        }else
         {
-          CurrentMinimalGroup = ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup;
-          // cout<<"Update of minimal command here first place, group number: "<<CurrentMinimalGroup<<endl;
-        }
-      }else{
-        // This part will delete the correct priority level command
-        for (unsigned int j = 0; j < ModuleCommandContainer.at(i)->CommandSquence.size(); ++j)
-        {
-          if (ModuleCommandContainer.at(i)->CommandSquence.at(j).ActualCommandMessage->priority()==ModuleCommandContainer.at(i)->CurrentPriority && ModuleCommandContainer.at(i)->CommandSquence.at(j).CommandGroup == CurrentCommandGroup)
+          // ----------------------- Time Count Down -------------------------
+          if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
           {
-            ModuleCommandContainer.at(i)->CommandSquence.erase(ModuleCommandContainer.at(i)->CommandSquence.begin()+j);
-            cout<<"World: second place:"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<" Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
-            break;
+            ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval -= 1;
           }
         }
+      }else
+      {
+        if (ModuleCommandContainer.at(i)->CommandSquence.at(0).ConditionCommand)
+        {
+          FinishOneConditionCommand(ModuleCommandContainer.at(i)->CommandSquence.at(0).ConditionID);
+        }
+        // This part will delete the correct priority level command
+        ModuleCommandContainer.at(i)->CommandSquence.erase(ModuleCommandContainer.at(i)->CommandSquence.begin());
+        cout<<"World: second place:"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<" Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
+
         ModuleCommandContainer.at(i)->ReceivedFlag = false;
         ModuleCommandContainer.at(i)->FinishedFlag = false;
         // command_message::msgs::CommandMessage finish_confirm_message;
@@ -880,449 +939,446 @@ void ControlCenter::CommandManager(void)
           cout<<"World: Erase the command sequence of "<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<endl;
           ModuleCommandContainer.at(i)->WhichModule->ModuleCommandContainer.reset();
           ModuleCommandContainer.erase(ModuleCommandContainer.begin()+i);
-        }else{
-          // cout<<"Update of minimal command here, group number: "<<CurrentMinimalGroup<<endl;
-          // ------------------- Patch for ordered group gait table --------------------
-          if (CurrentMinimalGroup > ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup)
-          {
-            CurrentMinimalGroup = ModuleCommandContainer.at(i)->CommandSquence.at(0).CommandGroup;
-          }
-          cout<<"Update of minimal command here, group number: "<<CurrentMinimalGroup<<endl;
-          // ---------------------------------------------------------------------------
         }
       }
     }
   }
-  CurrentCommandGroup = CurrentMinimalGroup;
 }
 // group: 0: same as the last command; -n: n step before the current group, if no smaller group, then set to the current group; +n: n steps after the current group. Total length is 5000
-void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group, unsigned int time_stamp, int priority, int msg_type) // unit of time_stamp is millisecond
+// void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group, unsigned int time_stamp, int priority, int msg_type) // unit of time_stamp is millisecond
+// {
+//   CommandPtr ConnectionMessage(new command_message::msgs::CommandMessage());
+//   // command_message::msgs::CommandMessage ConnectionMessage;
+//   ConnectionMessage->set_messagetype(msg_type);
+//   ConnectionMessage->set_priority(priority);
+//   for (int i = 0; i < 4; ++i)
+//   {
+//     ConnectionMessage->add_jointgaittablestatus(flag[i]);
+//     ConnectionMessage->add_jointgaittable(gait_value[i]);
+//   }
+//   // --------------- Patch for time based gait table ---------------------------
+//   CommandPro aNewMessage;
+//   aNewMessage.ActualCommandMessage = ConnectionMessage;
+//   aNewMessage.TimeInterval = time_stamp;
+//   aNewMessage.SpecialCommandFlag = false;
+//   //----------------------------------------------------------------------------
+
+//   // -------------- Patch for ordered group gait table ------------------------
+//   int min_group = MAX_COMMANDGROUP_LENGTH+1;
+//   for (unsigned int i = 0; i <moduleList.size();++i)
+//   {
+//     if (moduleList.at(i)->ModuleCommandContainer)
+//     {
+//       if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
+//       {
+//         min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
+//       }
+//     }
+//   }
+//   if (min_group == MAX_COMMANDGROUP_LENGTH+1)
+//   {
+//     min_group = 0;
+//   }  
+
+//   if (!module->ModuleCommandContainer)
+//   {
+//     ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//     if (group <= 0)
+//     {
+//       aNewMessage.CommandGroup = min_group;
+//     }else{
+//       aNewMessage.CommandGroup = min_group + group;
+//       if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
+//       {
+//         aNewMessage.CommandGroup = aNewMessage.CommandGroup-MAX_COMMANDGROUP_LENGTH-1;
+//         if (group != 1)
+//         {
+//           CommandPtr ConnectionMessageTmp(new command_message::msgs::CommandMessage());
+//           ConnectionMessageTmp->set_messagetype(3);
+//           ConnectionMessageTmp->set_priority(0);
+//           for (int i = 0; i < 4; ++i)
+//           {
+//             ConnectionMessageTmp->add_jointgaittablestatus(0);
+//             ConnectionMessageTmp->add_jointgaittable(0);
+//           }
+//           CommandPro TmpNewMessage;
+//           TmpNewMessage.ActualCommandMessage = ConnectionMessageTmp;
+//           TmpNewMessage.TimeInterval = 0;
+//           TmpNewMessage.CommandGroup = MAX_COMMANDGROUP_LENGTH;
+//           new_command_message->CommandSquence.push_back(TmpNewMessage);
+//         }
+//       }
+//     }
+//     // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//     new_command_message->CommandSquence.push_back(aNewMessage);
+//     ModuleCommandContainer.push_back(new_command_message);
+//     module->ModuleCommandContainer = new_command_message;
+//   }else
+//   {
+//     if (group == 0)
+//     {
+//       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
+//       if (priority == 0)
+//       {
+//         module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+//       }else{
+//         for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
+//         {
+//           if (priority > module->ModuleCommandContainer->CommandSquence.at(i).ActualCommandMessage->priority() && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup == aNewMessage.CommandGroup)
+//           {
+//             module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,aNewMessage);
+//             break;
+//           }
+//         }
+//       }
+//     }
+//     if (group > 0)
+//     {
+//       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
+//       if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
+//       {
+//         aNewMessage.CommandGroup -= MAX_COMMANDGROUP_LENGTH - 1;
+//       }
+//       module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+//     }
+//     if (group < 0)
+//     {
+//       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
+//       if(aNewMessage.CommandGroup<0)
+//       {
+//         aNewMessage.CommandGroup += MAX_COMMANDGROUP_LENGTH + 1;
+//       }
+//       if (aNewMessage.CommandGroup < min_group)
+//       {
+//         aNewMessage.CommandGroup = min_group;
+//       }
+//       if (module->ModuleCommandContainer->CommandSquence.front().CommandGroup>aNewMessage.CommandGroup)
+//       {
+//         module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin(),aNewMessage);
+//       }else{
+//         for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
+//         {
+//           // Haven't implement priority
+//           if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= module->ModuleCommandContainer->CommandSquence.back().CommandGroup)
+//           {
+//             module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
+//             break;
+//           }
+//           if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup)
+//           {
+//             module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
+//             break;
+//           }
+//         }
+//       }
+//     }
+//     // --------------------------------------------------------------------------
+//   }
+//   // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//   // new_command_message->CommandSquence.push_back(ConnectionMessage);
+//   // ModuleCommandContainer.push_back(new_command_message);
+//   // module->ModulePublisher->Publish(ConnectionMessage);
+
+// }
+
+void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int msg_type, unsigned int time_stamp, string condition_str, string dependency_str) // unit of time_stamp is millisecond
 {
   CommandPtr ConnectionMessage(new command_message::msgs::CommandMessage());
   // command_message::msgs::CommandMessage ConnectionMessage;
   ConnectionMessage->set_messagetype(msg_type);
-  ConnectionMessage->set_priority(priority);
+  ConnectionMessage->set_priority(0);
   for (int i = 0; i < 4; ++i)
   {
     ConnectionMessage->add_jointgaittablestatus(flag[i]);
     ConnectionMessage->add_jointgaittable(gait_value[i]);
   }
-  // --------------- Patch for time based gait table ---------------------------
-  CommandPro aNewMessage;
-  aNewMessage.ActualCommandMessage = ConnectionMessage;
-  aNewMessage.TimeInterval = time_stamp;
-  aNewMessage.SpecialCommandFlag = false;
-  //----------------------------------------------------------------------------
-
-  // -------------- Patch for ordered group gait table ------------------------
-  int min_group = MAX_COMMANDGROUP_LENGTH+1;
-  for (unsigned int i = 0; i <moduleList.size();++i)
+  CommandPro aNewMessage(ConnectionMessage,time_stamp);
+  if (condition_str.size()>0)
   {
-    if (moduleList.at(i)->ModuleCommandContainer)
-    {
-      if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
-      {
-        min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
-      }
-    }
+    aNewMessage.SetCondition(condition_str);
   }
-  if (min_group == MAX_COMMANDGROUP_LENGTH+1)
+  if (dependency_str.size()>0)
   {
-    min_group = 0;
-  }  
+    aNewMessage.SetDependency(dependency_str);
+  }
 
   if (!module->ModuleCommandContainer)
   {
     ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-    if (group <= 0)
-    {
-      aNewMessage.CommandGroup = min_group;
-    }else{
-      aNewMessage.CommandGroup = min_group + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup = aNewMessage.CommandGroup-MAX_COMMANDGROUP_LENGTH-1;
-        if (group != 1)
-        {
-          CommandPtr ConnectionMessageTmp(new command_message::msgs::CommandMessage());
-          ConnectionMessageTmp->set_messagetype(3);
-          ConnectionMessageTmp->set_priority(0);
-          for (int i = 0; i < 4; ++i)
-          {
-            ConnectionMessageTmp->add_jointgaittablestatus(0);
-            ConnectionMessageTmp->add_jointgaittable(0);
-          }
-          CommandPro TmpNewMessage;
-          TmpNewMessage.ActualCommandMessage = ConnectionMessageTmp;
-          TmpNewMessage.TimeInterval = 0;
-          TmpNewMessage.CommandGroup = MAX_COMMANDGROUP_LENGTH;
-          new_command_message->CommandSquence.push_back(TmpNewMessage);
-        }
-      }
-    }
-    // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+    
     new_command_message->CommandSquence.push_back(aNewMessage);
     ModuleCommandContainer.push_back(new_command_message);
     module->ModuleCommandContainer = new_command_message;
   }else
   {
-    if (group == 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
-      if (priority == 0)
-      {
-        module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          if (priority > module->ModuleCommandContainer->CommandSquence.at(i).ActualCommandMessage->priority() && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup == aNewMessage.CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    if (group > 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup -= MAX_COMMANDGROUP_LENGTH - 1;
-      }
-      module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-    }
-    if (group < 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if(aNewMessage.CommandGroup<0)
-      {
-        aNewMessage.CommandGroup += MAX_COMMANDGROUP_LENGTH + 1;
-      }
-      if (aNewMessage.CommandGroup < min_group)
-      {
-        aNewMessage.CommandGroup = min_group;
-      }
-      if (module->ModuleCommandContainer->CommandSquence.front().CommandGroup>aNewMessage.CommandGroup)
-      {
-        module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin(),aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          // Haven't implement priority
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= module->ModuleCommandContainer->CommandSquence.back().CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    // --------------------------------------------------------------------------
-  }
-  // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-  // new_command_message->CommandSquence.push_back(ConnectionMessage);
-  // ModuleCommandContainer.push_back(new_command_message);
-  // module->ModulePublisher->Publish(ConnectionMessage);
-
-}
-
-void ControlCenter::SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int group, unsigned int time_stamp, int priority, int msg_type)
-{
-  bool flag[4] = {false};
-  double gait_values[4] = {0};
-  flag[joint_ID] = true;
-  gait_values[joint_ID] = gait_value;
-  SendGaitTable(module, flag, gait_values, priority, msg_type);
-}
-// This command used to invoke disconnect command
-void ControlCenter::SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, int group)
-{
-  CommandPro aNewMessage;
-  // aNewMessage.ActualCommandMessage = ConnectionMessage;
-  aNewMessage.TimeInterval = 0;
-  aNewMessage.SpecialCommandFlag = true;
-  aNewMessage.Command.CommandType = commandtype;
-  aNewMessage.Command.Module1 = module1;
-  aNewMessage.Command.Module2 = module2;
-  aNewMessage.Command.Node1 = node1;
-  aNewMessage.Command.Node2 = node2;
-
-  int priority = 0;
-
-  int min_group = MAX_COMMANDGROUP_LENGTH+1;
-  for (unsigned int i = 0; i <moduleList.size();++i)
-  {
-    if (moduleList.at(i)->ModuleCommandContainer)
-    {
-      if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
-      {
-        min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
-      }
-    }
-  }
-  if (min_group == MAX_COMMANDGROUP_LENGTH+1)
-  {
-    min_group = 0;
-  }  
-
-  if (!module->ModuleCommandContainer)
-  {
-    ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-    if (group <= 0)
-    {
-      aNewMessage.CommandGroup = min_group;
-    }else{
-      aNewMessage.CommandGroup = min_group + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup = aNewMessage.CommandGroup-MAX_COMMANDGROUP_LENGTH-1;
-        if (group != 1)
-        {
-          CommandPtr ConnectionMessageTmp(new command_message::msgs::CommandMessage());
-          ConnectionMessageTmp->set_messagetype(3);
-          ConnectionMessageTmp->set_priority(0);
-          for (int i = 0; i < 4; ++i)
-          {
-            ConnectionMessageTmp->add_jointgaittablestatus(0);
-            ConnectionMessageTmp->add_jointgaittable(0);
-          }
-          CommandPro TmpNewMessage;
-          TmpNewMessage.ActualCommandMessage = ConnectionMessageTmp;
-          TmpNewMessage.TimeInterval = 0;
-          TmpNewMessage.CommandGroup = MAX_COMMANDGROUP_LENGTH;
-          new_command_message->CommandSquence.push_back(TmpNewMessage);
-        }
-      }
-    }
-    // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-    new_command_message->CommandSquence.push_back(aNewMessage);
-    ModuleCommandContainer.push_back(new_command_message);
-    module->ModuleCommandContainer = new_command_message;
-  }else
-  {
-    if (group == 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
-      if (priority == 0)
-      {
-        module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          if (priority > module->ModuleCommandContainer->CommandSquence.at(i).ActualCommandMessage->priority() && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup == aNewMessage.CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    if (group > 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup -= MAX_COMMANDGROUP_LENGTH - 1;
-      }
-      module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-    }
-    if (group < 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if(aNewMessage.CommandGroup<0)
-      {
-        aNewMessage.CommandGroup += MAX_COMMANDGROUP_LENGTH + 1;
-      }
-      if (aNewMessage.CommandGroup < min_group)
-      {
-        aNewMessage.CommandGroup = min_group;
-      }
-      if (module->ModuleCommandContainer->CommandSquence.front().CommandGroup>aNewMessage.CommandGroup)
-      {
-        module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin(),aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          // Haven't implement priority
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= module->ModuleCommandContainer->CommandSquence.back().CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    // --------------------------------------------------------------------------
+    module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
   }
 }
 
-void ControlCenter::SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group, unsigned int time_stamp, int priority)
+void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int msg_type, string condition_str, string dependency_str) // unit of time_stamp is millisecond
 {
   CommandPtr ConnectionMessage(new command_message::msgs::CommandMessage());
   // command_message::msgs::CommandMessage ConnectionMessage;
-  ConnectionMessage->set_messagetype(2);
-  ConnectionMessage->set_priority(priority);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_position()->set_x(x);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_position()->set_y(y);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_position()->set_z(orientation_angle);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_x(0);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_y(0);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_z(0);
-  ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_w(0);
-
-  // if (!module->ModuleCommandContainer)
-  // {
-  //   ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-  //   new_command_message->CommandSquence.push_back(ConnectionMessage);
-  //   ModuleCommandContainer.push_back(new_command_message);
-  //   module->ModuleCommandContainer = new_command_message;
-  // }else{
-  //   if (priority == 0)
-  //   {
-  //     module->ModuleCommandContainer->CommandSquence.push_back(ConnectionMessage);
-  //   }else
-  //   {
-  //     for (unsigned int i = 0; i < module->ModuleCommandContainer->CommandSquence.size(); ++i)
-  //     {
-  //       if (priority > module->ModuleCommandContainer->CommandSquence.at(i)->priority())
-  //       {
-  //         module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,ConnectionMessage);
-  //         break;
-  //       }
-  //     }
-  //   }
-  // }
-
-  // --------------- Patch for time based gait table ---------------------------
-  CommandPro aNewMessage;
-  aNewMessage.ActualCommandMessage = ConnectionMessage;
-  aNewMessage.TimeInterval = time_stamp;
-  //----------------------------------------------------------------------------
-
-  // -------------- Patch for ordered group gait table ------------------------
-  int min_group = MAX_COMMANDGROUP_LENGTH+1;
-  for (unsigned int i = 0; i <moduleList.size();++i)
+  ConnectionMessage->set_messagetype(msg_type);
+  ConnectionMessage->set_priority(0);
+  for (int i = 0; i < 4; ++i)
   {
-    if (moduleList.at(i)->ModuleCommandContainer)
-    {
-      if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
-      {
-        min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
-      }
-    }
+    ConnectionMessage->add_jointgaittablestatus(flag[i]);
+    ConnectionMessage->add_jointgaittable(gait_value[i]);
   }
-  if (min_group == MAX_COMMANDGROUP_LENGTH+1)
+  CommandPro aNewMessage(ConnectionMessage);
+  if (condition_str.size()>0)
   {
-    min_group = 0;
-  } 
+    aNewMessage.SetCondition(condition_str);
+  }
+  if (dependency_str.size()>0)
+  {
+    aNewMessage.SetDependency(dependency_str);
+  }
 
   if (!module->ModuleCommandContainer)
   {
-    
     ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-    if (group <= 0)
-    {
-      aNewMessage.CommandGroup = min_group;
-    }else{
-      aNewMessage.CommandGroup = min_group + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup = aNewMessage.CommandGroup-MAX_COMMANDGROUP_LENGTH-1;
-        CommandPtr ConnectionMessageTmp(new command_message::msgs::CommandMessage());
-        ConnectionMessageTmp->set_messagetype(3);
-        ConnectionMessageTmp->set_priority(0);
-        for (int i = 0; i < 4; ++i)
-        {
-          ConnectionMessageTmp->add_jointgaittablestatus(0);
-          ConnectionMessageTmp->add_jointgaittable(0);
-        }
-        CommandPro TmpNewMessage;
-        TmpNewMessage.ActualCommandMessage = ConnectionMessageTmp;
-        TmpNewMessage.TimeInterval = 0;
-        TmpNewMessage.CommandGroup = MAX_COMMANDGROUP_LENGTH;
-        new_command_message->CommandSquence.push_back(TmpNewMessage);
-      }
-    }
-    // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+    
     new_command_message->CommandSquence.push_back(aNewMessage);
     ModuleCommandContainer.push_back(new_command_message);
     module->ModuleCommandContainer = new_command_message;
-  }else{
-    if (group == 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
-      if (priority == 0)
-      {
-        module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          if (priority > module->ModuleCommandContainer->CommandSquence.at(i).ActualCommandMessage->priority() && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup == aNewMessage.CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    if (group > 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
-      {
-        aNewMessage.CommandGroup -= MAX_COMMANDGROUP_LENGTH - 1;
-      }
-      module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
-    }
-    if (group < 0)
-    {
-      aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
-      if(aNewMessage.CommandGroup<0)
-      {
-        aNewMessage.CommandGroup += MAX_COMMANDGROUP_LENGTH + 1;
-      }
-      if (aNewMessage.CommandGroup < min_group)
-      {
-        aNewMessage.CommandGroup = min_group;
-      }
-      if (module->ModuleCommandContainer->CommandSquence.front().CommandGroup>aNewMessage.CommandGroup)
-      {
-        module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin(),aNewMessage);
-      }else{
-        for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
-        {
-          // Haven't implement priority
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= module->ModuleCommandContainer->CommandSquence.back().CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-          if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup)
-          {
-            module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
-            break;
-          }
-        }
-      }
-    }
-    // --------------------------------------------------------------------------
+  }else
+  {
+    module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
   }
-  // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
-  // new_command_message->CommandSquence.push_back(ConnectionMessage);
-  // ModuleCommandContainer.push_back(new_command_message);
-  // module->ModulePublisher->Publish(ConnectionMessage);
 }
+
+void ControlCenter::SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int msg_type, unsigned int time_stamp, string condition_str, string dependency_str)
+{
+  bool flag[4] = {false,false,false,false};
+  double gait_values[4] = {0,0,0,0};
+  flag[joint_ID] = true;
+  gait_values[joint_ID] = gait_value;
+  SendGaitTable(module, flag, gait_values, msg_type, time_stamp, condition_str, dependency_str);
+}
+
+void ControlCenter::SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int msg_type, string condition_str, string dependency_str)
+{
+  bool flag[4] = {false,false,false,false};
+  double gait_values[4] = {0,0,0,0};
+  flag[joint_ID] = true;
+  gait_values[joint_ID] = gait_value;
+  SendGaitTable(module, flag, gait_values, msg_type, condition_str, dependency_str);
+}
+
+// This command used to invoke disconnect command
+void ControlCenter::SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, unsigned int time_stamp, string condition_str, string dependency_str)
+{
+  CommandPro aNewMessage;
+  aNewMessage.SetTimer(time_stamp);
+  SpecialCommand newSpecialCommand(commandtype, module1, module2, node1, node2);
+  aNewMessage.SetSpecialCommand(newSpecialCommand);
+  if (condition_str.size()>0)
+  {
+    aNewMessage.SetCondition(condition_str);
+  }
+  if (dependency_str.size()>0)
+  {
+    aNewMessage.SetDependency(dependency_str);
+  }
+
+  if (!module->ModuleCommandContainer)
+  {
+    ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+    
+    new_command_message->CommandSquence.push_back(aNewMessage);
+    ModuleCommandContainer.push_back(new_command_message);
+    module->ModuleCommandContainer = new_command_message;
+  }else
+  {
+    module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+  }
+}
+
+void ControlCenter::SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, string condition_str, string dependency_str)
+{
+  CommandPro aNewMessage;
+  SpecialCommand newSpecialCommand(commandtype, module1, module2, node1, node2);
+  aNewMessage.SetSpecialCommand(newSpecialCommand);
+  if (condition_str.size()>0)
+  {
+    aNewMessage.SetCondition(condition_str);
+  }
+  if (dependency_str.size()>0)
+  {
+    aNewMessage.SetDependency(dependency_str);
+  }
+
+  if (!module->ModuleCommandContainer)
+  {
+    ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+    
+    new_command_message->CommandSquence.push_back(aNewMessage);
+    ModuleCommandContainer.push_back(new_command_message);
+    module->ModuleCommandContainer = new_command_message;
+  }else
+  {
+    module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+  }
+}
+
+// void ControlCenter::SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group, unsigned int time_stamp, int priority)
+// {
+//   CommandPtr ConnectionMessage(new command_message::msgs::CommandMessage());
+//   // command_message::msgs::CommandMessage ConnectionMessage;
+//   ConnectionMessage->set_messagetype(2);
+//   ConnectionMessage->set_priority(priority);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_position()->set_x(x);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_position()->set_y(y);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_position()->set_z(orientation_angle);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_x(0);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_y(0);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_z(0);
+//   ConnectionMessage->mutable_positionneedtobe()->mutable_orientation()->set_w(0);
+
+//   // if (!module->ModuleCommandContainer)
+//   // {
+//   //   ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//   //   new_command_message->CommandSquence.push_back(ConnectionMessage);
+//   //   ModuleCommandContainer.push_back(new_command_message);
+//   //   module->ModuleCommandContainer = new_command_message;
+//   // }else{
+//   //   if (priority == 0)
+//   //   {
+//   //     module->ModuleCommandContainer->CommandSquence.push_back(ConnectionMessage);
+//   //   }else
+//   //   {
+//   //     for (unsigned int i = 0; i < module->ModuleCommandContainer->CommandSquence.size(); ++i)
+//   //     {
+//   //       if (priority > module->ModuleCommandContainer->CommandSquence.at(i)->priority())
+//   //       {
+//   //         module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,ConnectionMessage);
+//   //         break;
+//   //       }
+//   //     }
+//   //   }
+//   // }
+
+//   // --------------- Patch for time based gait table ---------------------------
+//   CommandPro aNewMessage;
+//   aNewMessage.ActualCommandMessage = ConnectionMessage;
+//   aNewMessage.TimeInterval = time_stamp;
+//   //----------------------------------------------------------------------------
+
+//   // -------------- Patch for ordered group gait table ------------------------
+//   int min_group = MAX_COMMANDGROUP_LENGTH+1;
+//   for (unsigned int i = 0; i <moduleList.size();++i)
+//   {
+//     if (moduleList.at(i)->ModuleCommandContainer)
+//     {
+//       if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
+//       {
+//         min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
+//       }
+//     }
+//   }
+//   if (min_group == MAX_COMMANDGROUP_LENGTH+1)
+//   {
+//     min_group = 0;
+//   } 
+
+//   if (!module->ModuleCommandContainer)
+//   {
+    
+//     ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//     if (group <= 0)
+//     {
+//       aNewMessage.CommandGroup = min_group;
+//     }else{
+//       aNewMessage.CommandGroup = min_group + group;
+//       if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
+//       {
+//         aNewMessage.CommandGroup = aNewMessage.CommandGroup-MAX_COMMANDGROUP_LENGTH-1;
+//         CommandPtr ConnectionMessageTmp(new command_message::msgs::CommandMessage());
+//         ConnectionMessageTmp->set_messagetype(3);
+//         ConnectionMessageTmp->set_priority(0);
+//         for (int i = 0; i < 4; ++i)
+//         {
+//           ConnectionMessageTmp->add_jointgaittablestatus(0);
+//           ConnectionMessageTmp->add_jointgaittable(0);
+//         }
+//         CommandPro TmpNewMessage;
+//         TmpNewMessage.ActualCommandMessage = ConnectionMessageTmp;
+//         TmpNewMessage.TimeInterval = 0;
+//         TmpNewMessage.CommandGroup = MAX_COMMANDGROUP_LENGTH;
+//         new_command_message->CommandSquence.push_back(TmpNewMessage);
+//       }
+//     }
+//     // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//     new_command_message->CommandSquence.push_back(aNewMessage);
+//     ModuleCommandContainer.push_back(new_command_message);
+//     module->ModuleCommandContainer = new_command_message;
+//   }else{
+//     if (group == 0)
+//     {
+//       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup;
+//       if (priority == 0)
+//       {
+//         module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+//       }else{
+//         for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
+//         {
+//           if (priority > module->ModuleCommandContainer->CommandSquence.at(i).ActualCommandMessage->priority() && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup == aNewMessage.CommandGroup)
+//           {
+//             module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i,aNewMessage);
+//             break;
+//           }
+//         }
+//       }
+//     }
+//     if (group > 0)
+//     {
+//       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
+//       if (aNewMessage.CommandGroup>MAX_COMMANDGROUP_LENGTH)
+//       {
+//         aNewMessage.CommandGroup -= MAX_COMMANDGROUP_LENGTH - 1;
+//       }
+//       module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+//     }
+//     if (group < 0)
+//     {
+//       aNewMessage.CommandGroup = module->ModuleCommandContainer->CommandSquence.back().CommandGroup + group;
+//       if(aNewMessage.CommandGroup<0)
+//       {
+//         aNewMessage.CommandGroup += MAX_COMMANDGROUP_LENGTH + 1;
+//       }
+//       if (aNewMessage.CommandGroup < min_group)
+//       {
+//         aNewMessage.CommandGroup = min_group;
+//       }
+//       if (module->ModuleCommandContainer->CommandSquence.front().CommandGroup>aNewMessage.CommandGroup)
+//       {
+//         module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin(),aNewMessage);
+//       }else{
+//         for (unsigned int i = module->ModuleCommandContainer->CommandSquence.size()-1; i >= 0; --i)
+//         {
+//           // Haven't implement priority
+//           if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup <= module->ModuleCommandContainer->CommandSquence.back().CommandGroup)
+//           {
+//             module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
+//             break;
+//           }
+//           if (module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > aNewMessage.CommandGroup && module->ModuleCommandContainer->CommandSquence.at(i-1).CommandGroup > module->ModuleCommandContainer->CommandSquence.at(i).CommandGroup)
+//           {
+//             module->ModuleCommandContainer->CommandSquence.insert(module->ModuleCommandContainer->CommandSquence.begin()+i+1,aNewMessage);
+//             break;
+//           }
+//         }
+//       }
+//     }
+//     // --------------------------------------------------------------------------
+//   }
+//   // ModuleCommandsPtr new_command_message(new ModuleCommands(module));
+//   // new_command_message->CommandSquence.push_back(ConnectionMessage);
+//   // ModuleCommandContainer.push_back(new_command_message);
+//   // module->ModulePublisher->Publish(ConnectionMessage);
+// }
 
 void ControlCenter::SendGaitTableInstance(SmoresModulePtr module, bool flag[4], double gait_value[4], int msg_type)
 {
@@ -1356,7 +1412,7 @@ void ControlCenter::SendPositionInstance(SmoresModulePtr module, double x, doubl
   module->ModulePublisher->Publish(*ConnectionMessage);
 }
 
-void ControlCenter::EraseComaands(SmoresModulePtr module)  // Need to be tested
+void ControlCenter::EraseComaands(SmoresModulePtr module)  // Need to be tested, need to delte command container in the world plugin
 {
   if (module->ModuleCommandContainer)
   {
@@ -1517,85 +1573,638 @@ unsigned int ControlCenter::CountModules(SmoresModulePtr module)
   return module_count;
 }
 
+// void ControlCenter::readFileAndGenerateCommands(const char* fileName)
+// {
+//   string output;
+//   ifstream infile;
+//   infile.open(fileName);
+//   int smallcount = 1000;
+//   double joints_values[4] = {0,0,0,0};
+//   bool flags[4] = {true,true,true,true};
+//   // int model_number;
+//   string model_name;
+//   int group_num = 0;
+//   unsigned int time_interval = 0;
+//   if (infile.is_open()) {
+//     while (!infile.eof()) {
+//       infile >> output;
+//       // cout<<output<<endl;
+//       if (smallcount == 0 && (output.compare("+")==0 || output.compare("-")==0))
+//       {
+//         bool Connect = true;
+//         if (output.compare("-")==0)
+//         {
+//           Connect = false;
+//         }
+//         infile >> output;
+//         string module_1 = output;
+//         infile >> output;
+//         string module_2 = output;
+//         infile >> output;
+//         int node_1 = atoi(output.c_str());
+//         infile >> output;
+//         int node_2 = atoi(output.c_str());
+//         infile >> output;
+//         int groupnum = atoi(output.c_str());
+//         if (Connect)
+//         {
+//           SendGaitTable(GetModulePtrByName(module_1), module_1, module_2, node_1, node_2, 1, groupnum);
+//         }else
+//         {
+//           SendGaitTable(GetModulePtrByName(module_1), module_1, module_2, node_1, node_2, 2, groupnum);
+//         }
+//         smallcount = 0;
+//       }else
+//       {
+//         switch(smallcount){
+//           // case 0:model_number = atoi(output.c_str());break;
+//           case 0:model_name = output.c_str();break;
+//           case 1:joints_values[0] = atof(output.c_str());break;
+//           case 2:joints_values[1] = atof(output.c_str());break;
+//           case 3:joints_values[2] = atof(output.c_str());break;
+//           case 4:joints_values[3] = atof(output.c_str());break;
+//           case 5:group_num = atoi(output.c_str());break;
+//           case 6:time_interval = atoi(output.c_str());break;
+//         }
+//         smallcount++;
+//         if (smallcount == 7)
+//         {
+//           smallcount=0;
+//           SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, group_num, time_interval);
+//         }
+//       }
+//     }
+//   }
+//   infile.close();
+// }
+
 void ControlCenter::readFileAndGenerateCommands(const char* fileName)
 {
   string output;
   ifstream infile;
   infile.open(fileName);
-  int smallcount = 1000;
+  int smallcount = 0;
   double joints_values[4] = {0,0,0,0};
   bool flags[4] = {true,true,true,true};
+  int commandType[4] = {0,0,0,0};
   // int model_number;
   string model_name;
-  int group_num = 0;
+  // int group_num = 0;
+  bool SpecialCommand = false;
+  bool timeBased = false;
+  int SpecialCommandType = 0;
   unsigned int time_interval = 0;
+  string condition = "";
+  string dependency = "";
+  // A temporary variable
+  int commandTypeSwitch = 0;
   if (infile.is_open()) {
-    while (!infile.eof()) {
+    while (!infile.eof()) 
+    {
       infile >> output;
       // cout<<output<<endl;
-      if (smallcount == 0 && (output.compare("+")==0 || output.compare("-")==0))
+      if (smallcount == 0 && output.compare("$") == 0)
       {
-        bool Connect = true;
-        if (output.compare("-")==0)
+        SpecialCommand = true;
+        smallcount ++ ;
+        continue;
+      }
+      if (SpecialCommand)
+      {
+        if (output.compare("-") == 0)
         {
-          Connect = false;
+          SpecialCommandType = 1; // Disconnection
         }
-        infile >> output;
-        string module_1 = output;
-        infile >> output;
-        string module_2 = output;
-        infile >> output;
-        int node_1 = atoi(output.c_str());
-        infile >> output;
-        int node_2 = atoi(output.c_str());
-        infile >> output;
-        int groupnum = atoi(output.c_str());
-        if (Connect)
+        if (output.compare("+") == 0)
         {
-          SendGaitTable(GetModulePtrByName(module_1), module_1, module_2, node_1, node_2, 1, groupnum);
-        }else
-        {
-          SendGaitTable(GetModulePtrByName(module_1), module_1, module_2, node_1, node_2, 2, groupnum);
+          SpecialCommandType = 2; // Connection
         }
-        smallcount = 0;
+        // if (SpecialCommandType == 0)
+        // {
+        //   cout<<"World: Readcommands: Unrecoginized command"<<endl;
+        // }
+        bool findEnd = false;
+        string modelname1 = "";
+        string modelname2 = "";
+        int node1 = 4;
+        int node2 = 4;
+        while(!findEnd)
+        {
+          infile >> output;
+          if (output.find(";") != string::npos)
+          {
+            findEnd = true;
+          }
+          if (output.find("$") != string::npos)
+          {
+            if (modelname1.size() == 0)
+            {
+              modelname1 = output.substr(1);
+            }
+            if (modelname2.size() == 0)
+            {
+              modelname2 = output.substr(1);
+            }
+            continue;
+          }
+          if (output.find("#") != string::npos)
+          {
+            if (node1 == 4)
+            {
+              node1 = atoi(output.substr(1).c_str());
+            }
+            if (node2 == 4)
+            {
+              node2 = atoi(output.substr(1).c_str());
+            }
+            continue;
+          }
+          if (output.find("[") != string::npos)
+          {
+            output = output.substr(output.find("["));
+            time_interval = atoi(output.substr(0,output.find("]")).c_str());
+            timeBased = true;
+          }
+          if (output.find("{") != string::npos)
+          {
+            output = output.substr(output.find("{"));
+            condition = output.substr(0,output.find("}"));
+            AddCondition(condition);
+          }
+          if (output.find("(") != string::npos)
+          {
+            output = output.substr(output.find("("));
+            dependency = output.substr(0,output.find(")"));
+          }
+        }
+        // Gait table be sent
+        if (SpecialCommandType == 1)
+        {
+          if (modelname1.size()>0 && modelname2.size()>0)
+          {
+            if (time_interval > 0)
+            {
+              SendGaitTable(GetModulePtrByName(modelname1), modelname1, modelname2, node1, node2, 2,time_interval,condition,dependency);
+            }else{
+              SendGaitTable(GetModulePtrByName(modelname1), modelname1, modelname2, node1, node2, 2,condition,dependency);
+            }
+          }
+        }
+        if (SpecialCommandType == 2)
+        {
+          if (modelname1.size()>0 && modelname2.size()>0 && node1<4 && node2<4)
+          {
+            if (time_interval > 0)
+            {
+              SendGaitTable(GetModulePtrByName(modelname1), modelname1, modelname2, node1, node2, 1,time_interval,condition,dependency);
+            }else{
+              SendGaitTable(GetModulePtrByName(modelname1), modelname1, modelname2, node1, node2, 1,condition,dependency);
+            }
+          }
+        }
+        smallcount = -1;
+        time_interval = 0;
+        condition = "";
+        dependency = "";
+        timeBased = false;
       }else
       {
-        switch(smallcount){
-          // case 0:model_number = atoi(output.c_str());break;
-          case 0:model_name = output.c_str();break;
-          case 1:joints_values[0] = atof(output.c_str());break;
-          case 2:joints_values[1] = atof(output.c_str());break;
-          case 3:joints_values[2] = atof(output.c_str());break;
-          case 4:joints_values[3] = atof(output.c_str());break;
-          case 5:group_num = atoi(output.c_str());break;
-          case 6:time_interval = atoi(output.c_str());break;
-        }
-        smallcount++;
-        if (smallcount == 7)
+        switch(smallcount)
         {
-          smallcount=0;
-          SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, group_num, time_interval);
+          case 0:model_name = output;break;
+          case 1:
+          {
+            if (output.compare("i") == 0)
+            {
+              flags[0] = false;
+              commandType[0] = 0;
+              joints_values[0] = 0;
+            }else
+            {
+              flags[0] = true;
+              if (output.substr(0,1).compare("p") == 0)
+              {
+                joints_values[0] = atof(output.substr(1).c_str());
+                commandType[0] = 1;
+                commandTypeSwitch = 3;
+              }
+              if (output.substr(0,1).compare("s") == 0)
+              {
+                joints_values[0] = atof(output.substr(1).c_str());
+                commandType[0] = 2;
+                commandTypeSwitch = 4;
+              }
+              if (output.substr(0,1).compare("t") == 0)
+              {
+                joints_values[0] = atof(output.substr(1).c_str());
+                commandType[0] = 3;
+                flags[0] = true;
+              }
+              if (output.compare("c") == 0)
+              {
+                joints_values[0] = 0;
+                commandType[0] = 4;
+              }
+              if (output.compare("d") == 0)
+              {
+                joints_values[0] = 0;
+                commandType[0] = 5;
+              }
+            }
+            break;
+          }
+          case 2:
+          {
+            if (output.compare("i") == 0)
+            {
+              flags[1] = false;
+              commandType[1] = 0;
+              joints_values[1] = 0;
+            }else
+            {
+              flags[1] = true;
+              if (output.substr(0,1).compare("p") == 0)
+              {
+                joints_values[1] = atof(output.substr(1).c_str());
+                commandType[1] = 1;
+                if (commandTypeSwitch == 4)
+                {
+                  flags[1] = false;
+                  joints_values[1] = 0;
+                }else{
+                  commandTypeSwitch = 3;
+                }
+              }
+              if (output.substr(0,1).compare("s") == 0)
+              {
+                joints_values[1] = atof(output.substr(1).c_str());
+                commandType[1] = 2;
+                if (commandTypeSwitch == 3)
+                {
+                  flags[1] = false;
+                  joints_values[1] = 0;
+                }else{
+                  commandTypeSwitch = 4;
+                }
+              }
+              if (output.substr(0,1).compare("t") == 0)
+              {
+                joints_values[1] = atof(output.substr(1).c_str());
+                commandType[1] = 3;
+                flags[1] = true;
+              }
+              if (output.compare("c") == 0)
+              {
+                joints_values[1] = 0;
+                commandType[1] = 4;
+              }
+              if (output.compare("d") == 0)
+              {
+                joints_values[1] = 0;
+                commandType[1] = 5;
+              }
+            }
+            break;
+          }
+          case 3:
+          {
+            if (output.compare("i") == 0)
+            {
+              flags[2] = false;
+              commandType[2] = 0;
+              joints_values[2] = 0;
+            }else
+            {
+              flags[2] = true;
+              if (output.substr(0,1).compare("p") == 0)
+              {
+                joints_values[2] = atof(output.substr(1).c_str());
+                commandType[2] = 1;
+                if (commandTypeSwitch == 4)
+                {
+                  flags[2] = false;
+                  joints_values[2] = 0;
+                }else{
+                  commandTypeSwitch = 3;
+                }
+              }
+              if (output.substr(0,1).compare("s") == 0)
+              {
+                joints_values[2] = atof(output.substr(1).c_str());
+                commandType[2] = 2;
+                if (commandTypeSwitch == 3)
+                {
+                  flags[2] = false;
+                  joints_values[2] = 0;
+                }else{
+                  commandTypeSwitch = 4;
+                }
+              }
+              if (output.substr(0,1).compare("t") == 0)
+              {
+                joints_values[2] = atof(output.substr(1).c_str());
+                commandType[2] = 3;
+                flags[2] = true;
+              }
+              if (output.compare("c") == 0)
+              {
+                joints_values[2] = 0;
+                commandType[2] = 4;
+              }
+              if (output.compare("d") == 0)
+              {
+                joints_values[2] = 0;
+                commandType[2] = 5;
+              }
+            }
+            break;
+          }
+          case 4:
+          {
+            bool commandEndHere = false;
+            if (output.find(";") != string::npos)
+            {
+              commandEndHere = true;
+              output = output.substr(0,output.find(";"));
+            }
+            if (output.compare("i") == 0)
+            {
+              flags[3] = false;
+              commandType[3] = 0;
+              joints_values[3] = 0;
+            }else
+            {
+              flags[3] = true;
+              if (output.substr(0,1).compare("p") == 0)
+              {
+                joints_values[3] = atof(output.substr(1).c_str());
+                commandType[3] = 1;
+                if (commandTypeSwitch == 4)
+                {
+                  flags[3] = false;
+                  joints_values[3] = 0;
+                }else{
+                  commandTypeSwitch = 3;
+                }
+              }
+              if (output.substr(0,1).compare("s") == 0)
+              {
+                joints_values[3] = atof(output.substr(1).c_str());
+                commandType[3] = 2;
+                if (commandTypeSwitch == 3)
+                {
+                  flags[3] = false;
+                  joints_values[3] = 0;
+                }else{
+                  commandTypeSwitch = 4;
+                }
+              }
+              if (output.substr(0,1).compare("t") == 0)
+              {
+                joints_values[3] = atof(output.substr(1).c_str());
+                commandType[3] = 3;
+                flags[3] = true;
+              }
+              if (output.compare("c") == 0)
+              {
+                joints_values[3] = 0;
+                commandType[3] = 4;
+              }
+              if (output.compare("d") == 0)
+              {
+                joints_values[3] = 0;
+                commandType[3] = 5;
+              }
+            }
+            if (commandEndHere)
+            {
+              if (commandTypeSwitch == 0 )
+              {
+                commandTypeSwitch = 3;
+              }
+              SendGaitTable(GetModulePtrByName(model_name),flags, joints_values, commandTypeSwitch);
+              smallcount = -1;
+              time_interval = 0;
+              condition = "";
+              dependency = "";
+              commandTypeSwitch = 0;
+            }
+            break;
+          }
+          case 5:
+          {
+            if (output.find("[") != string::npos)
+            {
+              output = output.substr(output.find("["));
+              time_interval = atoi(output.substr(0,output.find("]")).c_str());
+              timeBased = true;
+            }
+            if (output.find("{") != string::npos)
+            {
+              output = output.substr(output.find("{"));
+              condition = output.substr(0,output.find("}"));
+              AddCondition(condition);
+            }
+            if (output.find("(") != string::npos)
+            {
+              output = output.substr(output.find("("));
+              dependency = output.substr(0,output.find(")"));
+            }
+            if (output.compare(";") == 0 || output.find(";") != string::npos)
+            {
+              if (commandTypeSwitch == 0 )
+              {
+                commandTypeSwitch = 3;
+              }
+              if (timeBased)
+              {
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, time_interval, condition, dependency);
+              }else{
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, condition, dependency);
+              }
+              smallcount = -1;
+              time_interval = 0;
+              condition = "";
+              dependency = "";
+              timeBased = false;
+              commandTypeSwitch = 0;
+            }
+            break;
+          }
+          case 6:
+          {
+            if (output.find("[") != string::npos)
+            {
+              output = output.substr(output.find("["));
+              time_interval = atoi(output.substr(0,output.find("]")).c_str());
+              timeBased = true;
+            }
+            if (output.find("{") != string::npos)
+            {
+              output = output.substr(output.find("{"));
+              condition = output.substr(0,output.find("}"));
+              AddCondition(condition);
+            }
+            if (output.find("(") != string::npos)
+            {
+              output = output.substr(output.find("("));
+              dependency = output.substr(0,output.find(")"));
+            }
+            if (output.compare(";") == 0 || output.find(";") != string::npos)
+            {
+              if (commandTypeSwitch == 0 )
+              {
+                commandTypeSwitch = 3;
+              }
+              if (timeBased)
+              {
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, time_interval, condition, dependency);
+              }else{
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, condition, dependency);
+              }
+              smallcount = -1;
+              time_interval = 0;
+              condition = "";
+              dependency = "";
+              timeBased = false;
+              commandTypeSwitch = 0;
+            }
+            break;
+          }
+          case 7:
+          {
+            if (output.find("[") != string::npos)
+            {
+              output = output.substr(output.find("["));
+              time_interval = atoi(output.substr(0,output.find("]")).c_str());
+              timeBased = true;
+            }
+            if (output.find("{") != string::npos)
+            {
+              output = output.substr(output.find("{"));
+              condition = output.substr(0,output.find("}"));
+              AddCondition(condition);
+            }
+            if (output.find("(") != string::npos)
+            {
+              output = output.substr(output.find("("));
+              dependency = output.substr(0,output.find(")"));
+            }
+            if (output.compare(";") == 0 || output.find(";") != string::npos)
+            {
+              if (commandTypeSwitch == 0 )
+              {
+                commandTypeSwitch = 3;
+              }
+              if (timeBased)
+              {
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, time_interval, condition, dependency);
+              }else{
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, condition, dependency);
+              }
+              smallcount = -1;
+              time_interval = 0;
+              condition = "";
+              dependency = "";
+              timeBased = false;
+              commandTypeSwitch = 0;
+            }
+            break;
+          }
+          case 8:
+          {
+            if (output.compare(";") == 0 || output.find(";") != string::npos)
+            {
+              if (commandTypeSwitch == 0 )
+              {
+                commandTypeSwitch = 3;
+              }
+              if (timeBased)
+              {
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, time_interval, condition, dependency);
+              }else{
+                SendGaitTable(GetModulePtrByName(model_name), flags, joints_values, commandTypeSwitch, condition, dependency);
+              }
+              smallcount = -1;
+              time_interval = 0;
+              condition = "";
+              dependency = "";
+              timeBased = false;
+              commandTypeSwitch = 0;
+            }else{
+              cout<<"World: Readcommands: no semi-colon at all"<<endl;
+            }
+            break;
+          }
         }
       }
+      smallcount ++ ;
     }
   }
   infile.close();
 }
 
-void ControlCenter::currentCommandGroupInitialization(void)
+// void ControlCenter::currentCommandGroupInitialization(void)
+// {
+//   int min_group = MAX_COMMANDGROUP_LENGTH+1;
+//   for (unsigned int i = 0; i <moduleList.size();++i)
+//   {
+//     if (moduleList.at(i)->ModuleCommandContainer)
+//     {
+//       if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
+//       {
+//         min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
+//       }
+//     }
+//   }
+//   CurrentCommandGroup = min_group;
+// }
+
+void ControlCenter::AddCondition(string conditionid)
 {
-  int min_group = MAX_COMMANDGROUP_LENGTH+1;
-  for (unsigned int i = 0; i <moduleList.size();++i)
+  bool notExist = true;
+  for (unsigned int i = 0; i < CommandConditions.size(); ++i)
   {
-    if (moduleList.at(i)->ModuleCommandContainer)
+    if (CommandConditions.at(i)->condition_id.compare(conditionid) == 0)
     {
-      if (moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup < min_group)
-      {
-        min_group = moduleList.at(i)->ModuleCommandContainer->CommandSquence.at(0).CommandGroup;
-      }
+      CommandConditions.at(i)->total_count += 1;
+      notExist = false;
+      break;
     }
   }
-  CurrentCommandGroup = min_group;
+  if (notExist)
+  {
+    ConditionPtr newcondition(new Condition(conditionid));
+    CommandConditions.push_back(newcondition);
+  }
+}
+
+void ControlCenter::FinishOneConditionCommand(string conditionid)
+{
+  for (unsigned int i = 0; i < CommandConditions.size(); ++i)
+  {
+    if (CommandConditions.at(i)->condition_id.compare(conditionid) == 0)
+    {
+      CommandConditions.at(i)->finished_count += 1;
+      if (CommandConditions.at(i)->finished_count >= CommandConditions.at(i)->total_count)
+      {
+        CommandConditions.at(i)->achieved = true;
+      }
+      break;
+    }
+  }
+}
+
+bool ControlCenter::CheckCondition(string conditionid)
+{
+  for (unsigned int i = 0; i < CommandConditions.size(); ++i)
+  {
+    if (CommandConditions.at(i)->condition_id.compare(conditionid) == 0)
+    {
+      return CommandConditions.at(i)->achieved;
+    }
+  }
+  return true;
 }
     
 // Register this plugin with the simulator

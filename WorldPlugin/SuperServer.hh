@@ -55,6 +55,19 @@ namespace gazebo
     string LinkofModel2;
   };
 
+  class Condition
+  {
+  public:
+   Condition(string conditionID);
+  public:
+    string condition_id;
+    int total_count;
+    int finished_count;
+    bool achieved;
+  };
+
+  typedef boost::shared_ptr<Condition> ConditionPtr;
+
   class ControlCenter : public WorldPlugin
   {
     public: ControlCenter();
@@ -129,13 +142,20 @@ namespace gazebo
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     private: void CommandManager(void);
     
-    public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
+    // public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
+    public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int msg_type, unsigned int time_stamp, string condition_str = "", string dependency_str = "");
+
+    public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int msg_type, string condition_str = "", string dependency_str = "");
  
-    public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
+    public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int msg_type, unsigned int time_stamp, string condition_str = "", string dependency_str = "");
 
-    public: void SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, int group);
+    public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int msg_type, string condition_str = "", string dependency_str = "");
 
-    public: void SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group = 0, unsigned int time_stamp = 0, int priority = 0);
+    public: void SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, unsigned int time_stamp, string condition_str = "", string dependency_str = "");
+
+    public: void SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, string condition_str = "", string dependency_str = "");
+
+    // public: void SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group = 0, unsigned int time_stamp = 0, int priority = 0);
     
     // Those commands are not recommended for sending the gait table or position coordinates
     // But could be used in the direct driving situation
@@ -193,11 +213,17 @@ namespace gazebo
     
     // This function is used to count for a configuration, how many modules are there
     private: unsigned int CountModules(SmoresModulePtr module);
+
+    private: void AddCondition(string conditionid);
+
+    private: void FinishOneConditionCommand(string conditionid);
+
+    private: bool CheckCondition(string conditionid);
     
     // This function is only for demonstration
     void readFileAndGenerateCommands(const char* fileName);
 
-    void currentCommandGroupInitialization(void);
+    // void currentCommandGroupInitialization(void);
 
     private: physics::WorldPtr currentWorld;
     private: event::ConnectionPtr addEntityConnection;
@@ -219,10 +245,12 @@ namespace gazebo
     // A String vector which contain the initial joint angles of modules
     private: vector<string> InitalJointValue;
     private: vector<math::Pose> InitialPosition;
+    // A vector created for command management
+    private: vector<ConditionPtr> CommandConditions;
     
     private: vector<ModuleCommandsPtr> ModuleCommandContainer;
-    private: int CurrentCommandGroup;
-    private: int CurrentMinimalGroup;
+    // private: int CurrentCommandGroup;
+    // private: int CurrentMinimalGroup;
     //+++++++++ testing ++++++++++++++++++++++++++++
     private: int infoCounter;
     private: int numOfModules;

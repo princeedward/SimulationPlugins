@@ -1,16 +1,86 @@
 #include "SmoresModule.hh"
 
+SpecialCommand::SpecialCommand(int commandtype, string modelname1, string modelname2, int node1, int node2)
+{
+	CommandType = commandtype;
+	Module1 = modelname1;
+	Module2 = modelname2;
+	Node1 = node1;
+	Node2 = node2;
+}
+SpecialCommand::SpecialCommand(int commandtype)
+{
+	CommandType = commandtype;
+	Module1 = "";
+	Module2 = "";
+	Node1 = 0;
+	Node2 = 0;
+}
 SpecialCommand::SpecialCommand()
 {
 	CommandType = 0;
+	Module1 = "";
+	Module2 = "";
+	Node1 = 0;
+	Node2 = 0;
 }
 CommandPro::CommandPro()
 {
+	TimeBased = false;
 	TimeInterval = 0;	// Not a time based command
-	CommandGroup = 0; 
+	// CommandGroup = 0; 
+	ConditionCommand = false;
+	ConditionID = "";
+	ConditionOnOtherCommand = false;
+	Dependency = "";
 	SpecialCommandFlag = false;
 	// FinishTimeReccorderMS = 0;
 	// FinishTimeReccorderS = 0;
+}
+CommandPro::CommandPro(CommandPtr command)
+{
+	ActualCommandMessage = command;
+	TimeBased = false;
+	TimeInterval = 0;	// Not a time based command
+	// CommandGroup = 0; 
+	ConditionCommand = false;
+	ConditionID = "";
+	ConditionOnOtherCommand = false;
+	Dependency = "";
+	SpecialCommandFlag = false;
+	// FinishTimeReccorderMS = 0;
+	// FinishTimeReccorderS = 0;
+}
+CommandPro::CommandPro(CommandPtr command, unsigned int timer)
+{
+	ActualCommandMessage = command;
+	TimeBased = true;
+	TimeInterval = timer;	// Not a time based command
+	ConditionCommand = false;
+	ConditionID = "";
+	ConditionOnOtherCommand = false;
+	Dependency = "";
+	SpecialCommandFlag = false;
+}
+void CommandPro::SetTimer(unsigned int timer)
+{
+	TimeBased = true;
+	TimeInterval = timer;	
+}
+void CommandPro::SetCondition(string condition)
+{
+	ConditionCommand = true;
+	ConditionID = condition;
+}
+void CommandPro::SetDependency(string dependency)
+{
+	ConditionOnOtherCommand = true;
+	Dependency = dependency;
+}
+void CommandPro::SetSpecialCommand(SpecialCommand specialcommand)
+{
+	SpecialCommandFlag = true;
+	Command = specialcommand;
 }
 ModuleCommands::ModuleCommands(SmoresModulePtr which_module)
 {
@@ -18,7 +88,7 @@ ModuleCommands::ModuleCommands(SmoresModulePtr which_module)
   FinishedFlag = false;
   ReceivedFlag = false;
   ExecutionFlag = false;	
-  CurrentPriority = 0;
+  // CurrentPriority = 0;
 }
   
 SmoresModule::SmoresModule(string mID, bool mtype, physics::ModelPtr modulePtr, transport::PublisherPtr publisher, transport::SubscriberPtr subsciber, unsigned int num_ID):
