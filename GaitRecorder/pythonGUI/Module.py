@@ -5,5 +5,5 @@ class Module:
       self.JointAngle = jointangle
     except ValueError:
       pass
-    self.Group = 1
+    # self.Group = 1
     self.Speeds = [0,0,0]

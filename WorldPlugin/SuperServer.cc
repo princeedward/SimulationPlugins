@@ -795,10 +795,12 @@ void ControlCenter::Deconnection(string moduleName, int node_ID)
 
 void ControlCenter::Deconnection(string moduleName1, string moduleName2)
 {
+  // cout<<"World: Model name 1: "<<moduleName1<<"; Model name 2: "<<moduleName2<<endl;
   for (unsigned int i = 0; i < ConnectionEdges.size(); ++i)
   {
     if ((ConnectionEdges.at(i)->model_1->Parent->ModuleID.compare(moduleName1)==0 && ConnectionEdges.at(i)->model_2->Parent->ModuleID.compare(moduleName2)==0) || (ConnectionEdges.at(i)->model_1->Parent->ModuleID.compare(moduleName2)==0 && ConnectionEdges.at(i)->model_2->Parent->ModuleID.compare(moduleName1)==0))
     {
+      // cout<<"World: Distroy the dynamic joint by real"<<endl;
       DynamicJointDestroy(ConnectionEdges.at(i));
       ConnectionEdges.at(i)->model_1->Edge.reset();
       ConnectionEdges.at(i)->model_2->Edge.reset();
@@ -818,7 +820,7 @@ void ControlCenter::CommandManager(void)
     {
       if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
       {
-        if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval <= 0)
+        if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeInterval == 0)
         {
           ModuleCommandContainer.at(i)->FinishedFlag = true;
         }else{
@@ -835,8 +837,13 @@ void ControlCenter::CommandManager(void)
             if (CheckCondition(ModuleCommandContainer.at(i)->CommandSquence.at(0).Dependency))
             {
               // cout<<"World: Still can get in here"<<endl;
+              // if (ModuleCommandContainer.at(i)->CommandSquence.at(0).ConditionID.compare("g"))
+              // {
+              //   cout<<"World: Enter the condition: g"<<endl;
+              // }
               if (ModuleCommandContainer.at(i)->CommandSquence.at(0).SpecialCommandFlag)
               {
+                cout<<"World: Here is the special command"<<endl;
                 if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 1)
                 {
                   ActiveConnection(ModuleCommandContainer.at(i)->WhichModule, GetModulePtrByName(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2), ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Node2);
@@ -851,6 +858,7 @@ void ControlCenter::CommandManager(void)
                 }
                 if (ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.CommandType == 2)
                 {
+                  cout<<"World: Disconnection command has been send"<<endl;
                   Deconnection(ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module1, ModuleCommandContainer.at(i)->CommandSquence.at(0).Command.Module2);
                   if (ModuleCommandContainer.at(i)->CommandSquence.at(0).TimeBased)
                   {
@@ -866,13 +874,15 @@ void ControlCenter::CommandManager(void)
                 ModuleCommandContainer.at(i)->WhichModule->ModulePublisher->Publish(*(ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage));
               }
               // cout<<"World: Message to '"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<"' set joint angle 3 to : "<<ModuleCommandContainer.at(i)->CommandSquence.at(0)->jointgaittable(3)<<endl;
-              // cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
+              cout<<"World: Model: "<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<": command sent"<<endl;
+              cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
               ModuleCommandContainer.at(i)->ExecutionFlag = true;
             }
             // else
             // {
-            //   ModuleCommandContainer.at(i)->FinishedFlag = false;
-            //   ModuleCommandContainer.at(i)->ReceivedFlag = false;
+            //   // ModuleCommandContainer.at(i)->FinishedFlag = false;
+            //   // ModuleCommandContainer.at(i)->ReceivedFlag = false;
+            //   cout<<"World: is waiting for condition: "<< ModuleCommandContainer.at(i)->CommandSquence.at(0).Dependency<<endl;
             // }
           }else
           {
@@ -908,7 +918,8 @@ void ControlCenter::CommandManager(void)
               ModuleCommandContainer.at(i)->WhichModule->ModulePublisher->Publish(*(ModuleCommandContainer.at(i)->CommandSquence.at(0).ActualCommandMessage));
             }
             // cout<<"World: Message to '"<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<"' set joint angle 3 to : "<<ModuleCommandContainer.at(i)->CommandSquence.at(0)->jointgaittable(3)<<endl;
-            // cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
+            cout<<"World: Model: "<<ModuleCommandContainer.at(i)->WhichModule->ModuleID<<": command sent"<<endl;
+            cout<<"World: Size of the message is "<<ModuleCommandContainer.at(i)->CommandSquence.size()<<endl;
             ModuleCommandContainer.at(i)->ExecutionFlag = true;
           }
         }else
@@ -1092,10 +1103,16 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double g
     ConnectionMessage->add_jointgaittablestatus(flag[i]);
     ConnectionMessage->add_jointgaittable(gait_value[i]);
   }
+  // Here is a patch for instantly executed command
+  if (time_stamp == 0)
+  {
+    time_stamp = 1;
+  }
   CommandPro aNewMessage(ConnectionMessage,time_stamp);
   if (condition_str.size()>0)
   {
     aNewMessage.SetCondition(condition_str);
+    AddCondition(condition_str);
   }
   if (dependency_str.size()>0)
   {
@@ -1109,9 +1126,11 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double g
     new_command_message->CommandSquence.push_back(aNewMessage);
     ModuleCommandContainer.push_back(new_command_message);
     module->ModuleCommandContainer = new_command_message;
+    cout<<"World: "<<module->ModuleID<<" : command length: "<<module->ModuleCommandContainer->CommandSquence.size()<<endl;
   }else
   {
     module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+    cout<<"World: "<<module->ModuleID<<" : command length: "<<module->ModuleCommandContainer->CommandSquence.size()<<endl;
   }
 }
 
@@ -1130,6 +1149,7 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double g
   if (condition_str.size()>0)
   {
     aNewMessage.SetCondition(condition_str);
+    AddCondition(condition_str);
   }
   if (dependency_str.size()>0)
   {
@@ -1143,9 +1163,11 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, bool flag[4], double g
     new_command_message->CommandSquence.push_back(aNewMessage);
     ModuleCommandContainer.push_back(new_command_message);
     module->ModuleCommandContainer = new_command_message;
+    cout<<"World: "<<module->ModuleID<<" : command length: "<<module->ModuleCommandContainer->CommandSquence.size()<<endl;
   }else
   {
     module->ModuleCommandContainer->CommandSquence.push_back(aNewMessage);
+    cout<<"World: "<<module->ModuleID<<" : command length: "<<module->ModuleCommandContainer->CommandSquence.size()<<endl;
   }
 }
 
@@ -1171,12 +1193,19 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, int joint_ID, double g
 void ControlCenter::SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, unsigned int time_stamp, string condition_str, string dependency_str)
 {
   CommandPro aNewMessage;
+  // Here is a patch for instantly executed command
+  if (time_stamp == 0)
+  {
+    time_stamp = 1;
+  }
   aNewMessage.SetTimer(time_stamp);
   SpecialCommand newSpecialCommand(commandtype, module1, module2, node1, node2);
   aNewMessage.SetSpecialCommand(newSpecialCommand);
+  cout<<"World: Special Command: condition: "<<condition_str<<"; dependency: "<<dependency_str<<endl;
   if (condition_str.size()>0)
   {
     aNewMessage.SetCondition(condition_str);
+    AddCondition(condition_str);
   }
   if (dependency_str.size()>0)
   {
@@ -1201,9 +1230,11 @@ void ControlCenter::SendGaitTable(SmoresModulePtr module, string module1, string
   CommandPro aNewMessage;
   SpecialCommand newSpecialCommand(commandtype, module1, module2, node1, node2);
   aNewMessage.SetSpecialCommand(newSpecialCommand);
+  cout<<"World: Special Command: condition: "<<condition_str<<"; dependency: "<<dependency_str<<endl;
   if (condition_str.size()>0)
   {
     aNewMessage.SetCondition(condition_str);
+    AddCondition(condition_str);
   }
   if (dependency_str.size()>0)
   {
@@ -1650,7 +1681,7 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
   // int model_number;
   string model_name;
   // int group_num = 0;
-  bool SpecialCommand = false;
+  bool SpecialCommandFlag = false;
   bool timeBased = false;
   int SpecialCommandType = 0;
   unsigned int time_interval = 0;
@@ -1665,15 +1696,16 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
       // cout<<output<<endl;
       if (smallcount == 0 && output.compare("$") == 0)
       {
-        SpecialCommand = true;
+        SpecialCommandFlag = true;
         smallcount ++ ;
         continue;
       }
-      if (SpecialCommand)
+      if (SpecialCommandFlag)
       {
         if (output.compare("-") == 0)
         {
           SpecialCommandType = 1; // Disconnection
+          // cout<<"World: Added a disconnection message"<<endl;
         }
         if (output.compare("+") == 0)
         {
@@ -1695,15 +1727,17 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
           {
             findEnd = true;
           }
-          if (output.find("$") != string::npos)
+          if (output.find("&") != string::npos)
           {
             if (modelname1.size() == 0)
             {
               modelname1 = output.substr(1);
-            }
-            if (modelname2.size() == 0)
+            }else
             {
-              modelname2 = output.substr(1);
+              if (modelname2.size() == 0)
+              {
+                modelname2 = output.substr(1);
+              }
             }
             continue;
           }
@@ -1712,29 +1746,33 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
             if (node1 == 4)
             {
               node1 = atoi(output.substr(1).c_str());
-            }
-            if (node2 == 4)
+            }else
             {
-              node2 = atoi(output.substr(1).c_str());
+              if (node2 == 4)
+              {
+                node2 = atoi(output.substr(1).c_str());
+              }
             }
             continue;
           }
           if (output.find("[") != string::npos)
           {
             output = output.substr(output.find("["));
-            time_interval = atoi(output.substr(0,output.find("]")).c_str());
+            time_interval = atoi(output.substr(1,output.find("]")-1).c_str());
             timeBased = true;
           }
           if (output.find("{") != string::npos)
           {
             output = output.substr(output.find("{"));
-            condition = output.substr(0,output.find("}"));
-            AddCondition(condition);
+            condition = output.substr(1,output.find("}")-1);
+            // AddCondition(condition);
+            cout<<"World: condition is: "<<condition<<endl;
           }
           if (output.find("(") != string::npos)
           {
             output = output.substr(output.find("("));
-            dependency = output.substr(0,output.find(")"));
+            dependency = output.substr(1,output.find(")")-1);
+            cout<<"World: dependency is: "<<dependency<<endl;
           }
         }
         // Gait table be sent
@@ -1767,6 +1805,7 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
         condition = "";
         dependency = "";
         timeBased = false;
+        SpecialCommandFlag = false;
       }else
       {
         switch(smallcount)
@@ -1996,19 +2035,21 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
             if (output.find("[") != string::npos)
             {
               output = output.substr(output.find("["));
-              time_interval = atoi(output.substr(0,output.find("]")).c_str());
+              time_interval = atoi(output.substr(1,output.find("]")-1).c_str());
               timeBased = true;
             }
             if (output.find("{") != string::npos)
             {
               output = output.substr(output.find("{"));
-              condition = output.substr(0,output.find("}"));
-              AddCondition(condition);
+              condition = output.substr(1,output.find("}")-1);
+              // AddCondition(condition);
+              cout<<"World: condition is: "<<condition<<endl;
             }
             if (output.find("(") != string::npos)
             {
               output = output.substr(output.find("("));
-              dependency = output.substr(0,output.find(")"));
+              dependency = output.substr(1,output.find(")")-1);
+              cout<<"World: dependency is: "<<dependency<<endl;
             }
             if (output.compare(";") == 0 || output.find(";") != string::npos)
             {
@@ -2036,19 +2077,21 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
             if (output.find("[") != string::npos)
             {
               output = output.substr(output.find("["));
-              time_interval = atoi(output.substr(0,output.find("]")).c_str());
+              time_interval = atoi(output.substr(1,output.find("]")-1).c_str());
               timeBased = true;
             }
             if (output.find("{") != string::npos)
             {
               output = output.substr(output.find("{"));
-              condition = output.substr(0,output.find("}"));
-              AddCondition(condition);
+              condition = output.substr(1,output.find("}")-1);
+              // AddCondition(condition);
+              cout<<"World: condition is: "<<condition<<endl;
             }
             if (output.find("(") != string::npos)
             {
               output = output.substr(output.find("("));
-              dependency = output.substr(0,output.find(")"));
+              dependency = output.substr(1,output.find(")")-1);
+              cout<<"World: dependency is: "<<dependency<<endl;
             }
             if (output.compare(";") == 0 || output.find(";") != string::npos)
             {
@@ -2076,19 +2119,21 @@ void ControlCenter::readFileAndGenerateCommands(const char* fileName)
             if (output.find("[") != string::npos)
             {
               output = output.substr(output.find("["));
-              time_interval = atoi(output.substr(0,output.find("]")).c_str());
+              time_interval = atoi(output.substr(1,output.find("]")-1).c_str());
               timeBased = true;
             }
             if (output.find("{") != string::npos)
             {
               output = output.substr(output.find("{"));
-              condition = output.substr(0,output.find("}"));
-              AddCondition(condition);
+              condition = output.substr(1,output.find("}")-1);
+              // AddCondition(condition);
+              cout<<"World: condition is: "<<condition<<endl;
             }
             if (output.find("(") != string::npos)
             {
               output = output.substr(output.find("("));
-              dependency = output.substr(0,output.find(")"));
+              dependency = output.substr(1,output.find(")")-1);
+              cout<<"World: dependency is: "<<dependency<<endl;
             }
             if (output.compare(";") == 0 || output.find(";") != string::npos)
             {
@@ -2189,6 +2234,7 @@ void ControlCenter::FinishOneConditionCommand(string conditionid)
       if (CommandConditions.at(i)->finished_count >= CommandConditions.at(i)->total_count)
       {
         CommandConditions.at(i)->achieved = true;
+        cout<<"Wprld: condition: "<<CommandConditions.at(i)->condition_id<<" :achieved"<<endl;
       }
       break;
     }
@@ -2204,6 +2250,7 @@ bool ControlCenter::CheckCondition(string conditionid)
       return CommandConditions.at(i)->achieved;
     }
   }
+  cout<<"World: didn't find the condition"<<endl;
   return true;
 }
     
