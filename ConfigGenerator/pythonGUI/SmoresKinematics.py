@@ -54,10 +54,13 @@ class SmoresKinematics(object):
 		module = self.name_mapping[module_name]
 		# Get the KDL chain of the path from the root to the module of interest.
 		# Note that node 1 is at the center of the module.
-		(kdl_chain, joint_angles) = self.design.get_kinematics( self.root_node, module.nodes[1], universal_root=True)
+		(kdl_chain, joint_angles) = self.design.get_kinematics( self.root_module.nodes[1], module.nodes[1] )
 		fk = ChainFkSolverPos_recursive(kdl_chain)
 		final_frame = Frame()
 		fk.JntToCart(joint_angles, final_frame)
+		# convert to world coordinates:
+
+
 		# convert to a touple and return
 		xyz = final_frame.p
 		rpy = final_frame.M.GetRPY()

@@ -30,7 +30,7 @@ class SmoresModule(object):
         module is the root.  inactive_nodes is a list of numbers (again, 0-3)
         specifying which nodes should be considered inactive in this module.
         '''
-        self.W = 0.1  # width of a module (constant)
+        self.W = 0.05  # width of a module (constant)
         # name:
         self.name = name
         # root node number:

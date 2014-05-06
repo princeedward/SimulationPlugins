@@ -10,6 +10,7 @@ from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
 from SimpleKL import CloseEnough, Connectable
 from SmoresKinematics import SmoresKinematics
+import kinematics
 import pdb
 # from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
 
@@ -305,10 +306,10 @@ class App(Frame):
           #-- Add module to the kinematics, and get position and orientation.
           parent_face = self.Node2.get()
           new_module_face = self.Node1.get()
-          self.Kinematics.add_child_module(theOtherModule.ModelName, self.modelname.get(), 
+          module_position = kinematics.get_new_position(theOtherModule, module_jointangle, parent_face, new_module_face)
+          #self.Kinematics.add_child_module(theOtherModule.ModelName, self.modelname.get(), 
             parent_face, new_module_face, module_jointangle)
-          #module_position = self.CalculatePosition()
-          module_position = self.Kinematics.get_module_position(self.modelname.get())
+          #module_position = self.Kinematics.get_module_position(self.modelname.get())
           print 'XYZ: ' + str(module_position[0:3])
           print 'RPY: ' + str(module_position[3:6])
           # --
