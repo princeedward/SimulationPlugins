@@ -9,7 +9,6 @@ import eventlet  # need to install: $:sudo pip install eventlet
 from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
 from SimpleKL import CloseEnough, Connectable
-from SmoresKinematics import SmoresKinematics
 import kinematics
 import pdb
 # from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
@@ -33,7 +32,6 @@ class App(Frame):
         self.modulenameincrementrecorder = 0
         self.InsertMethod = StringVar()
         self.InsertMethod.set('Connection')
-        self.Kinematics = SmoresKinematics()  # Computes kinematics
         self.connectedmodelvar = StringVar()
         self.Node1 = IntVar()
         self.Node1.set(3)
@@ -294,8 +292,6 @@ class App(Frame):
         print "Joint angle tuple is ",module_jointangle
         new_module = Module(self.modelname.get(),module_position,module_jointangle)
         self.ModuleList.append(new_module)
-        # Add the module to the kinematic structure:
-        self.Kinematics.add_root_module( new_module.ModelName, new_module.Position, new_module.JointAngle )
         if self.ServerConnected == 1:
           self.PublishMessage(self.ModuleList[-1])
       else:
@@ -303,13 +299,10 @@ class App(Frame):
         theOtherModule = self.findModule(self.connectedmodelvar.get())
         if theOtherModule:
           module_jointangle = (degree2rad(self.Joint0.get()),degree2rad(self.Joint1.get()),degree2rad(self.Joint2.get()),degree2rad(self.Joint3.get()))
-          #-- Add module to the kinematics, and get position and orientation.
+          #-- Get module position and orientation.
           parent_face = self.Node2.get()
           new_module_face = self.Node1.get()
           module_position = kinematics.get_new_position(theOtherModule, module_jointangle, parent_face, new_module_face)
-          #self.Kinematics.add_child_module(theOtherModule.ModelName, self.modelname.get(), 
-            parent_face, new_module_face, module_jointangle)
-          #module_position = self.Kinematics.get_module_position(self.modelname.get())
           print 'XYZ: ' + str(module_position[0:3])
           print 'RPY: ' + str(module_position[3:6])
           # --

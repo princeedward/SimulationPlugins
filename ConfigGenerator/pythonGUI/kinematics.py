@@ -1,3 +1,4 @@
+import pdb
 from numpy import matrix, deg2rad, rad2deg, cos, sin, hstack, vstack, eye, pi, arcsin, arccos
 c = cos
 s = sin
@@ -18,7 +19,7 @@ def rotx(theta):
 				  ])
 
 def roty(theta):
-	''' Returns a rotatino matrix about y-axis by angle theta, in radians. '''
+	''' Returns a rotation matrix about y-axis by angle theta, in radians. '''
 	return matrix([[c(theta),	0,	-s(theta)],
 				   [	   0,	1,			0],
 				   [s(theta),	0,	 c(theta)]
@@ -37,21 +38,23 @@ def rotZYX2rpy(R):
 	return (t1, t2, t3)
 
 #########
-L = 1
+L = 0.05
 
 def get_new_position(parent_module, new_module_angles, parent_face, new_face):
         """ Returns the position and orientation of the new module as (x,y,z,r,p,y) """
-        new_wrt_old = kinematics.get_xform(parent_module.JointAngle, new_module_angles,
+        new_wrt_old = get_xform(parent_module.JointAngle, new_module_angles,
         								   parent_face, new_face)
-        p_pos = matrix(parent_module.position[0:3]).T
-        p_rpy = parent_module.position[4:6]
-        p_rot = rotz(p_rpy[3])*roty(p_rpy[2])*rotx(p_rpy[1])
+        p_pos = matrix(parent_module.Position[0:3]).T
+        p_rpy = parent_module.Position[3:6]
+        p_rot = rotz(p_rpy[2])*roty(p_rpy[1])*rotx(p_rpy[0])
         new_wrt_world = se3(p_rot, p_pos)*new_wrt_old
-        n_pos = tuple(new_wrt_world[0:3,3])
+        n_pos = tuple(new_wrt_world[0:3,3].ravel().tolist()[0])
         n_rpy = rotZYX2rpy( new_wrt_world[0:3,0:3] )
         return n_pos + n_rpy
 
 def get_xform(angles1, angles2, face1, face2):
+	''' Returns the se3 transform from the center of module1 to the center of module2, given their
+	joint angles and the faces at which they are connected. '''
 	T1 = get_xform1(angles1, face1)
 	T2 = get_xform2(angles2, face2)
 	return T1*T2
