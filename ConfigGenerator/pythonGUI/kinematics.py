@@ -52,7 +52,6 @@ def get_new_position(parent_module, new_module_angles, parent_face, new_face):
         p_pitch = parent_module.Position[4]
         p_yaw = parent_module.Position[5]
         p_rot = rotz(p_yaw)*roty(p_pitch)*rotx(p_roll)
-        pdb.set_trace()
         new_wrt_world = se3(p_rot, p_pos)*new_wrt_old
         n_pos = tuple(new_wrt_world[0:3,3].ravel().tolist()[0])
         n_rpy = rotZYX2rpy( new_wrt_world[0:3,0:3] )
@@ -67,29 +66,33 @@ def get_xform(angles1, angles2, face1, face2):
 
 def get_xform1(a, face1):
 	if face1 == 0:
-		t0 = matrix([0,0,0]).T
-		r0 = rotx( a[3] )
-		t1 = matrix([0, 0, 0]).T
-		r1 = rotz( -pi/2 )
-		t2 = matrix([L, 0, 0]).T
-		r2 = rotx( a[0] )
-		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)
+		t0 = matrix([0, 0, 0]).T
+		r0 = rotz( -pi/2 )
+		t1 = matrix([L, 0, 0]).T
+		r1 = rotx( a[0] )
+		return se3(r0,t0)*se3(r1,t1)
 	elif face1 == 1:
-		t0 = matrix([L, 0, 0]).T
-		r0 = rotx( a[1] )
-		return se3(r0,t0)
+		t0 = matrix([0, 0, 0]).T
+		r0 = rotx( a[3] )
+		t1 = matrix([L, 0, 0]).T
+		r1 = rotx( a[1] )
+		return se3(r0,t0)*se3(r1,t1)
 	elif face1 ==2:
 		t0 = matrix([0, 0, 0]).T
-		r0 = rotz( pi )
-		t1 = matrix([L, 0, 0]).T
-		r1 = rotx( a[2] )
-		return se3(r0,t0)*se3(r1,t1)
+		r0 = rotx( a[3] )
+		t1 = matrix([0, 0, 0]).T
+		r1 = rotz( pi )
+		t2 = matrix([L, 0, 0]).T
+		r2 = rotx( a[2] )
+		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)
 	elif face1 == 3:
 		t0 = matrix([0, 0, 0]).T
-		r0 = rotz( pi/2 )
-		t1 = matrix([L, 0, 0]).T
-		r1 = matrix(eye(3))
-		return se3(r0,t0)*se3(r1,t1)
+		r0 = rotx( a[3] )
+		t1 = matrix([0, 0, 0]).T
+		r1 = rotz( pi/2 )
+		t2 = matrix([L, 0, 0]).T
+		r2 = matrix(eye(3))
+		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)
 	else:
 		assert False, 'Unrecognized face number: ' + str(face1)
 
@@ -101,16 +104,14 @@ def get_xform2(a, face2):
 		r1 = rotx( a[0] )
 		t2 = matrix([-L, 0, 0]).T
 		r2 = rotz( pi/2 )
-		t3 = matrix([0,0,0]).T
-		r3 = rotx( a[3] )
-		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)*se3(r3,t3)
+		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)
 	elif face2 == 1:
 		t0 = matrix([0, 0, 0]).T
 		r0 = rotz( pi )
 		t1 = matrix([0, 0, 0]).T
 		r1 = rotx( a[2] )
 		t2 = matrix([-L, 0, 0]).T
-		r2 = matrix(eye(3)) 
+		r2 = rotx( -a[3] ) 
 		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)
 	elif face2 == 2:
 		t0 = matrix([0, 0, 0]).T
@@ -120,12 +121,14 @@ def get_xform2(a, face2):
 		t2 = matrix([0, 0, 0]).T
 		r2 = rotz( pi )
 		t3 = matrix([L, 0, 0]).T
-		r3 = matrix(eye(3))
+		r3 = rotx( -a[3] ) 
 		return se3(r0,t0)*se3(r1,t1)*se3(r2,t2)*se3(r3,t3)
 	elif face2 == 3:
 		t0 = matrix([L, 0, 0]).T
 		r0 = rotz( pi/2 )
-		return se3(r0,t0)
+		t1 = matrix([0, 0, 0]).T
+		r1 = rotx( -a[3] )	# Note: this must be negated because positive rotations move the face-3 block relative the face-0 block.
+		return se3(r0,t0)*se3(r1,t1)
 	else:
 		assert False, 'Unrecognized face number: ' + str(face2)
 
