@@ -48,14 +48,15 @@ def get_new_position(parent_module, new_module_angles, parent_face, new_face):
         new_wrt_old = get_xform(parent_module.JointAngle, new_module_angles,
         								   parent_face, new_face)
         p_pos = matrix(parent_module.Position[0:3]).T
-        p_roll = parent_module.Position[3]
-        p_pitch = parent_module.Position[4]
-        p_yaw = parent_module.Position[5]
-        p_rot = rotz(p_yaw)*roty(p_pitch)*rotx(p_roll)
+        #p_roll = parent_module.Position[3]
+        #p_pitch = parent_module.Position[4]
+        #p_yaw = parent_module.Position[5]
+        #p_rot = rotz(p_yaw)*roty(p_pitch)*rotx(p_roll)
+        p_rot = parent_module.rotation_matrix
         new_wrt_world = se3(p_rot, p_pos)*new_wrt_old
         n_pos = tuple(new_wrt_world[0:3,3].ravel().tolist()[0])
         n_rpy = rotZYX2rpy( new_wrt_world[0:3,0:3] )
-        return n_pos + n_rpy
+        return ( n_pos+n_rpy, new_wrt_world[0:3,0:3] )
 
 def get_xform(angles1, angles2, face1, face2):
 	''' Returns the se3 transform from the center of module1 to the center of module2, given their

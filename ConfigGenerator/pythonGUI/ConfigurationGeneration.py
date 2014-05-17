@@ -291,6 +291,10 @@ class App(Frame):
         module_jointangle = (degree2rad(self.Joint0.get()),degree2rad(self.Joint1.get()),degree2rad(self.Joint2.get()),degree2rad(self.Joint3.get()))
         print "Joint angle tuple is ",module_jointangle
         new_module = Module(self.modelname.get(),module_position,module_jointangle)
+        # Assign rotation matrix to new_module based on euler angles:
+        new_module.rotation_matrix = kinematics.rotz(module_position[5])* \
+                                     kinematics.roty(module_position[4])* \
+                                     kinematics.rotx(module_position[3])
         self.ModuleList.append(new_module)
         if self.ServerConnected == 1:
           self.PublishMessage(self.ModuleList[-1])
@@ -302,11 +306,13 @@ class App(Frame):
           #-- Get module position and orientation.
           parent_face = self.Node2.get()
           new_module_face = self.Node1.get()
-          module_position = kinematics.get_new_position(theOtherModule, module_jointangle, parent_face, new_module_face)
+          (module_position, rotation_matrix) = kinematics.get_new_position(theOtherModule, module_jointangle, parent_face, new_module_face)
           print 'XYZ: ' + str(module_position[0:3])
           print 'RPY: ' + str(module_position[3:6])
           # --
           new_module = Module(self.modelname.get(),module_position,module_jointangle)
+          # Add rotation matrix to new_module (necessary for kinematics)
+          new_module.rotation_matrix = rotation_matrix
           self.ModuleList.append(new_module)
           print "Connected module name",self.connectedmodelvar.get()
           new_connection = Connection(self.modelname.get(),self.connectedmodelvar.get(),self.Node1.get(),self.Node2.get(),self.C_dis.get(),self.a_dis.get())
