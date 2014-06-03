@@ -1,29 +1,40 @@
-# from ttk import *
+#--------------- GUI Modules -------------------------
 from Tkinter import *
 import ttk
 from PIL import Image, ImageTk  # need to install: sudo apt-get install python-imaging-tk
+#--------------- Representation related --------------
 from Module import *
 from Connection import *
+#--------------- Communiation related ----------------
 from config_message_pb2 import *
 import eventlet  # need to install: $:sudo pip install eventlet
 from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
+#--------------- Kinematic related -------------------
 from SimpleKL import CloseEnough, Connectable
 import kinematics
-import pdb
 # from SmoresKinematics import SmoresKinematics # Kinematics using Embedding code
+#--------------- Mathematic related ------------------
+from numpy import pi
+#--------------- Debuggin Tools ----------------------
+import pdb
+#--------------- System related ----------------------
+import time
+from subprocess import call, Popen, PIPE
+import sys
 
 window_width = 800
 window_height = 520
 Border_width = 20
 Border_hieht = 40
-PI = 3.1415926
+PI = pi           #3.1415926
 
 class App(Frame):
   
-    def __init__(self, parent):
+    def __init__(self, parent,flag):
         Frame.__init__(self, parent)   
-         
+        
+        #------------ Variables Initialization -------------------
         self.parent = parent
         self.ModuleList = []
         self.ConnectionList = []
@@ -46,18 +57,31 @@ class App(Frame):
         self.a_dis.set(0)
         self.modellist = StringVar()
         self.adjacentnode = StringVar()
-        self.communicator = GzCommunicator()
-        self.communicator.StartCommunicator()
-        # self.newconnection = gztopic.CoonectionEstablish()
-        # pdb.set_trace()
-        # self.manager = Manager()
-        self.ServerConnected = 1
-        # try:
-        # pdb.set_trace()
-        # self.publisher = self.manager.advertise('/','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage' /gazebo/Configuration/configSubscriber
-        # self.publisher.wait_for_listener()
-        # except ValueError:
-        #   self.ServerConnected = 0
+        self.savepathstr = StringVar()
+        self.initflag = flag
+
+        #------------ Run Simulation and GUI ---------------------
+        if flag == 0: 
+          self.rungzserver = Popen(['sh', 'RunSimulation.sh'], stdout=PIPE)
+          self.rungzclient = Popen(['gzclient', '-g','libsystem_gui.so'], stdout=PIPE)
+          time.sleep(3)
+
+        #------------ Building Connections ----------------------
+        if flag == 0 or flag == 2:
+          self.communicator = GzCommunicator()
+          self.communicator.StartCommunicator("/gazebo/Configuration/configSubscriber",'config_message.msgs.ConfigMessage')
+          # self.newconnection = gztopic.CoonectionEstablish()
+          # pdb.set_trace()
+          # self.manager = Manager()
+          self.ServerConnected = 1
+          # try:
+          # pdb.set_trace()
+          # self.publisher = self.manager.advertise('/','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage' /gazebo/Configuration/configSubscriber
+          # self.publisher.wait_for_listener()
+          # except ValueError:
+          #   self.ServerConnected = 0
+
+        #------------ Initializae GUI ---------------------------
         self.initUI()
         
     def initUI(self):
@@ -155,6 +179,7 @@ class App(Frame):
 
         label8 = Label(f1, text='Z: ')
         label8.place(x = 610, y = 150)
+        self.Z_coor.set(0.05)
         self.z_coor = Entry(f1, textvariable=self.Z_coor,width=10,state=NORMAL)
         self.z_coor.place(x = 610, y = 175)
 
@@ -267,20 +292,19 @@ class App(Frame):
         InsertButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
 
         #---------------- Save Button --------------------------------
+        savepathlabel = Label(f1, text='Save path: ')
+        savepathlabel.place(x = window_width-Border_width-495, y = window_height-Border_hieht-7, anchor = SE)
+        savepathlabel2 = Label(f2, text='Save path: ')
+        savepathlabel2.place(x = window_width-Border_width-495, y = window_height-Border_hieht-7, anchor = SE)
+        self.savepathstr.set("/home/edward/.gazebo/models/SMORES7Stella/");
+        self.savepath1 = Entry(f1, textvariable=self.savepathstr, width = 45)
+        self.savepath1.place(x = window_width-Border_width-130, y = window_height-Border_hieht-7, anchor = SE)
+        self.savepath2 = Entry(f2, textvariable=self.savepathstr, width = 45)
+        self.savepath2.place(x = window_width-Border_width-130, y = window_height-Border_hieht-7, anchor = SE)
         self.saveButton = Button(f1, text="Save", command = self.WriteFile)
         self.saveButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
         self.saveButton2 = Button(f2, text="Save", command = self.WriteFile)
         self.saveButton2.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
-
-        #---------------- Here is a test -----------------------------
-        # newmessage = ConfigMessage()
-        # newmessage.ModelName = "hello"
-        # for i in xrange(6):
-        #   newmessage.ModelPosition.append(0)
-        # for i in xrange(4):
-        #   newmessage.JointAngles.append(0)
-        # print "The Messgae is: ",newmessage.ModelName
-        # self.publisher.publish(newmessage)
 
     def InsertModel(self,*args):
       print "frob called with {} arguments".format(len(args))
@@ -402,7 +426,13 @@ class App(Frame):
       print "Information published"
 
     def CloseWindow(self):
-      self.communicator.stop()
+      if self.initflag==0 or self.initflag==2:
+        self.communicator.stop()
+      if self.initflag==0:
+        self.rungzserver.terminate()
+        self.rungzclient.terminate()
+        call(["pkill", "gzserver"])
+        call(["pkill", "gzclient"])
       self.quit()
 
     def CheckJointAngle(self,*args):
@@ -445,7 +475,10 @@ class App(Frame):
         self.SaveEnable()
 
     def WriteFile(self):
-      f = open("InitialConfiguration", 'w')
+      apathstr = self.savepathstr.get()
+      if apathstr[-1] != '/':
+        apathstr += '/'
+      f = open(apathstr+"InitialConfiguration", 'w')
       lines = ['<?xml version="1.0" encoding="UTF-8"?>\n']
       lines.append('<configuration>\n')
       lines.append('<modules>\n')
@@ -559,13 +592,20 @@ class App(Frame):
 def degree2rad(angle):
   return angle/180.0*PI
                      
-def main():
+def main(flag):
   
     root = Tk()
     root.geometry(str(window_width)+"x"+str(window_height))
-    app = App(root)
+    app = App(root,flag)
     root.mainloop()  
 
 
 if __name__ == '__main__':
-    main()  
+  if len(sys.argv) < 2:
+    flag = 0
+  else:
+    if sys.argv[1] == '-gd': # gui debug mode, open gui only
+      flag = 1
+    if sys.argv[1] == '-o':  # do not invoke simulation
+      flag = 2
+  main(flag)  
