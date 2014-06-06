@@ -50,7 +50,7 @@ class App(Frame):
     self.file_opt = options = {}
     # options['defaultextension'] = '.txt'
     options['filetypes'] = [('all files', '*'), ('text files', '.txt')]
-    options['initialdir'] = '/home/edward/'
+    options['initialdir'] = '~/'
     # options['initialfile'] = 'myfile.txt'
     options['parent'] = parent
     options['title'] = 'Open Configuration File'

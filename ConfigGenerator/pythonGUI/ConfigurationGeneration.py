@@ -1,14 +1,16 @@
 #--------------- GUI Modules -------------------------
 from Tkinter import *
 import ttk
+import tkFileDialog
 from PIL import Image, ImageTk  # need to install: sudo apt-get install python-imaging-tk
 #--------------- Representation related --------------
 from Module import *
 from Connection import *
+import xml.etree.ElementTree as ET   # XML parser
 #--------------- Communiation related ----------------
 from config_message_pb2 import *
-import eventlet  # need to install: $:sudo pip install eventlet
-from pygazebo import *  #need to install: $: sudo pip install pygazebo
+# import eventlet  # need to install: $:sudo pip install eventlet
+# from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
 #--------------- Kinematic related -------------------
 from SimpleKL import CloseEnough, Connectable
@@ -59,6 +61,15 @@ class App(Frame):
         self.adjacentnode = StringVar()
         self.savepathstr = StringVar()
         self.initflag = flag
+        self.ServerConnected = 0
+
+        #------------ File Options -------------------------------
+        self.file_opt = options = {}
+        # options['defaultextension'] = '.txt'
+        options['filetypes'] = [('all files', '*'), ('text files', '.txt')]
+        options['initialdir'] = '~/'
+        options['parent'] = parent
+        options['title'] = 'Open Configuration File'
 
         #------------ Run Simulation and GUI ---------------------
         if flag == 0: 
@@ -70,13 +81,12 @@ class App(Frame):
         if flag == 0 or flag == 2:
           self.communicator = GzCommunicator()
           self.communicator.StartCommunicator("/gazebo/Configuration/configSubscriber",'config_message.msgs.ConfigMessage')
-          # self.newconnection = gztopic.CoonectionEstablish()
           # pdb.set_trace()
           # self.manager = Manager()
           self.ServerConnected = 1
           # try:
           # pdb.set_trace()
-          # self.publisher = self.manager.advertise('/','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage' /gazebo/Configuration/configSubscriber
+          # self.publisher = self.manager.advertise('/gazebo/Configuration/configSubscriber','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage' /gazebo/Configuration/configSubscriber
           # self.publisher.wait_for_listener()
           # except ValueError:
           #   self.ServerConnected = 0
@@ -293,18 +303,86 @@ class App(Frame):
 
         #---------------- Save Button --------------------------------
         savepathlabel = Label(f1, text='Save path: ')
-        savepathlabel.place(x = window_width-Border_width-495, y = window_height-Border_hieht-7, anchor = SE)
+        savepathlabel.place(x = window_width-Border_width-555, y = window_height-Border_hieht-7, anchor = SE)
         savepathlabel2 = Label(f2, text='Save path: ')
-        savepathlabel2.place(x = window_width-Border_width-495, y = window_height-Border_hieht-7, anchor = SE)
+        savepathlabel2.place(x = window_width-Border_width-555, y = window_height-Border_hieht-7, anchor = SE)
         self.savepathstr.set("/home/edward/.gazebo/models/SMORES7Stella/");
         self.savepath1 = Entry(f1, textvariable=self.savepathstr, width = 45)
-        self.savepath1.place(x = window_width-Border_width-130, y = window_height-Border_hieht-7, anchor = SE)
+        self.savepath1.place(x = window_width-Border_width-190, y = window_height-Border_hieht-7, anchor = SE)
         self.savepath2 = Entry(f2, textvariable=self.savepathstr, width = 45)
-        self.savepath2.place(x = window_width-Border_width-130, y = window_height-Border_hieht-7, anchor = SE)
+        self.savepath2.place(x = window_width-Border_width-190, y = window_height-Border_hieht-7, anchor = SE)
         self.saveButton = Button(f1, text="Save", command = self.WriteFile)
-        self.saveButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
+        self.saveButton.place(x = window_width-Border_width-125, y = window_height-Border_hieht-5, anchor = SE)
         self.saveButton2 = Button(f2, text="Save", command = self.WriteFile)
-        self.saveButton2.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
+        self.saveButton2.place(x = window_width-Border_width-125, y = window_height-Border_hieht-5, anchor = SE)
+
+        self.loadButton = Button(f1, text="Load", command = self.LoadFile)
+        self.loadButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
+        self.loadButton2 = Button(f2, text="Load", command = self.LoadFile)
+        self.loadButton2.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
+
+    def LoadFile(self,*args):
+      filename = tkFileDialog.askopenfilename(**self.file_opt)
+
+      # open file on your own
+      if filename:
+        self.BuildConfigurationFromFile(filename)
+
+    def BuildConfigurationFromFile(self, filename):
+      # Delete the exiting configuration first
+
+      # Build new configurations
+      self.tree = ET.parse(filename)
+      root = self.tree.getroot()
+      modules = root.find("modules")
+      for eachmodule in modules.findall('module') :
+        model_name = eachmodule.find('name').text
+        positionstr = eachmodule.find('position').text
+        # print "position: ",self.StringToTuple(positionstr)
+        module_position = self.StringToTuple(positionstr)
+        jointanglestr = eachmodule.find('joints').text
+        # print "joint angles: ",self.StringToTuple(jointanglestr)
+        module_jointangle = self.StringToTuple(jointanglestr)
+        new_module = Module(model_name,module_position,module_jointangle)
+        new_module.rotation_matrix = kinematics.rotz(module_position[5])* \
+                                     kinematics.roty(module_position[4])* \
+                                     kinematics.rotx(module_position[3])
+        self.ModuleList.append(new_module)
+        if self.ServerConnected == 1:
+          self.PublishMessage(self.ModuleList[-1])
+
+      # Build Connection Information
+      connections = root.find("connections")
+      for eachconnection in connections.findall('connection') :
+        new_connection = Connection(eachconnection.find('module1').text,eachconnection.find('module2').text,int(eachconnection.find('node1').text),int(eachconnection.find('node2').text),float(eachconnection.find('distance').text),float(eachconnection.find('angle').text))
+        self.ConnectionList.append(new_connection)
+        self.GetModelByname(eachconnection.find('module1').text).connection(int(eachconnection.find('node1').text),self.ConnectionList[-1])
+        self.GetModelByname(eachconnection.find('module2').text).connection(int(eachconnection.find('node2').text),self.ConnectionList[-1])
+      print "Total connections: ",len(self.ConnectionList)
+
+      self.updateModuleList()
+      self.modulenameincrementrecorder = int(''.join(c for c in self.ModuleList[-1].ModelName if c.isdigit()))
+      self.nameIncrement()
+      self.Rel_pos.select()
+      self.DisableXYZInput()
+      self.SaveEnable()
+      self.connectmodel.set('')
+
+    def StringToTuple(self, anglestring):
+      jointangles = []
+      while True:
+        idx = anglestring.find(" ")
+        if idx >=0 :
+          jointangles.append(float(anglestring[0:idx]))
+          anglestring = anglestring[idx+1:]
+        else:
+          jointangles.append(float(anglestring))
+          break
+      return tuple(jointangles)
+
+    def GetModelByname(self,name):
+      models = [eachmodel for eachmodel in self.ModuleList if eachmodel.ModelName == name]
+      return models[0]
 
     def InsertModel(self,*args):
       print "frob called with {} arguments".format(len(args))
@@ -572,6 +650,9 @@ class App(Frame):
       self.updateModuleList()
       self.modellist.set('')
       self.DeleteButtonDisable()
+
+    def DeleteConfiguration(self):
+      newmessage = ConfigMessage()
 
     def DeleteButtonDisable(self):
       self.DeleteButton["state"] = DISABLED
