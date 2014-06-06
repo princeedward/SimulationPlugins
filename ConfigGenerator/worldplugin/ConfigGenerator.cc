@@ -146,6 +146,7 @@ void ControlCenter::addEntity2World(std::string & _info)
   SmoresModulePtr newModule(new SmoresModule(_info, true, newModulePub, newModuleSub, howManyModules));
   newModule->ManuallyNodeInitial(newModule);
   moduleList.push_back(newModule);
+  NeedToSetPtr = int(moduleList.size()) - 1;
   // newModule->ManuallyNodeInitial(newModule);
   // moduleList.at(howManyModules)->SaySomthing();
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -372,9 +373,10 @@ void ControlCenter::FeedBackMessageDecoding(CommandMessagePtr &msg)
   if (msg->messagetype()==5)
   {
     // Initalization functions
+    // NeedToSetPtr = this->currentWorld->GetModelCount()-1;
     moduleList.at(NeedToSetPtr)->SetModulePtr(currentWorld->GetModel(moduleList.at(NeedToSetPtr)->ModuleID));
     cout<<"World: Asign the pointer to module: "<<moduleList.at(NeedToSetPtr)->ModuleID<<endl;
-    NeedToSetPtr += 1; // Need a function when delete a entity, this value needs to be decrease
+    // NeedToSetPtr += 1; // Need a function when delete a entity, this value needs to be decrease
     if (InitalJointValue.size()>0)
     {
       // bool flags[4] = {true,true,true,true};
@@ -1461,7 +1463,36 @@ unsigned int ControlCenter::CountModules(SmoresModulePtr module)
 
 void ControlCenter::DeleteModule(string module_name)
 {
+  SmoresModulePtr currentModule = GetModulePtrByName(module_name);
+  // ---------- Destroy all the edges -------------------
+  if (currentModule->NodeFWPtr->Edge)
+  {
+    Deconnection(currentModule, 0);
+  }
+  if (currentModule->NodeLWPtr->Edge)
+  {
+    Deconnection(currentModule, 1);
+  }
+  if (currentModule->NodeRWPtr->Edge)
+  {
+    Deconnection(currentModule, 2);
+  }
+  if (currentModule->NodeUHPtr->Edge)
+  {
+    Deconnection(currentModule, 3);
+  }
+  // ---------- Destroy module in the module list -----
+  for (unsigned int i = 0; i < moduleList.size(); ++i)
+  {
+    if (currentModule == moduleList.at(i))
+    {
+      moduleList.at(i).reset();
+      moduleList.erase(moduleList.begin()+i);
+      break;
+    }
+  }
   currentWorld->GetModel(module_name)->Fini();
+  // NeedToSetPtr -= 1;
 }
 
 // void ControlCenter::readFileAndGenerateCommands(const char* fileName)

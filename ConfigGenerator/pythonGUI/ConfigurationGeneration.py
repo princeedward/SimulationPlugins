@@ -330,7 +330,7 @@ class App(Frame):
 
     def BuildConfigurationFromFile(self, filename):
       # Delete the exiting configuration first
-
+      self.DeleteConfiguration()
       # Build new configurations
       self.tree = ET.parse(filename)
       root = self.tree.getroot()
@@ -652,7 +652,21 @@ class App(Frame):
       self.DeleteButtonDisable()
 
     def DeleteConfiguration(self):
-      newmessage = ConfigMessage()
+      for eachmodel in self.ModuleList:
+        newmessage = ConfigMessage()
+        newmessage.ModelName = eachmodel.ModelName
+        for i in xrange(6):
+          newmessage.ModelPosition.append(0)
+        for i in xrange(4):
+          newmessage.JointAngles.append(0)
+        newmessage.DeleteFlag = True
+        self.communicator.publish(newmessage)
+
+      self.ModuleList = []
+      self.ConnectionList = []
+      self.updateModuleList()
+      self.modellist.set('')
+      self.DeleteButtonDisable()
 
     def DeleteButtonDisable(self):
       self.DeleteButton["state"] = DISABLED
