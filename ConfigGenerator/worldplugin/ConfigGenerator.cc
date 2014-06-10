@@ -108,6 +108,7 @@ void ControlCenter::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
 
 void ControlCenter::addEntity2World(std::string & _info)
 {
+  cout<<"World: Contacts exist (add entity): "<<currentWorld->GetPhysicsEngine()->GetContactManager()->GetContacts().size()<<endl;
   // transport::NodePtr node(new transport::Node());
   // node->Init();
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -766,6 +767,9 @@ void ControlCenter::DynamicJointDestroy(SmoresEdgePtr aEdge)
 
 void ControlCenter::InsertModel(string name, math::Pose position)
 {
+  //++++++++++++++++++++++++++++++++++++++++++
+  cout<<"World: Contacts exist (before inserting): "<<currentWorld->GetPhysicsEngine()->GetContactManager()->GetContacts().size()<<endl;
+  //++++++++++++++++++++++++++++++++++++++++++
   if (!currentWorld->GetModel(name))
   {
     sdf::SDFPtr modelSDF;
@@ -790,8 +794,13 @@ void ControlCenter::InsertModel(string name, math::Pose position)
 
 void ControlCenter::InsertModel(string name, math::Pose position, string joint_angles)
 {
-  if (!currentWorld->GetModel(name))
-  {
+  //++++++++++++++++++++++++++++++++++++++++++
+  cout<<"World: Contacts exist (before inserting): "<<currentWorld->GetPhysicsEngine()->GetContactManager()->GetContacts().size()<<endl;
+  cout<<"World: The module name is: "<<name<<endl;
+  //++++++++++++++++++++++++++++++++++++++++++
+  // if (!currentWorld->GetModel(name))
+  // {
+    cout<<"World: This is a count of the object left(inserting): "<<currentWorld->GetModel(name).use_count()<<endl;
     sdf::SDFPtr modelSDF;
     modelSDF.reset(new sdf::SDF);  
     // sdf::initFile("gazebo.sdf", modelSDF);
@@ -831,9 +840,10 @@ void ControlCenter::InsertModel(string name, math::Pose position, string joint_a
     currentWorld->InsertModelSDF(*modelSDF);
     InitalJointValue.push_back(joint_angles);
     InitialPosition.push_back(position);
-  }
+  // }
   // else{
-  //   cout<<"World: Insertion failed: module name exists"
+  //   cout<<"World: This is a count of the object left(inserting): "<<currentWorld->GetModel(name).use_count()<<endl;
+  //   cout<<"World: Insertion failed: module name exists"<<endl;
   // }
 } 
 
@@ -1491,8 +1501,15 @@ void ControlCenter::DeleteModule(string module_name)
       break;
     }
   }
+  cout<<"World: Just delete the model with the name: "<<module_name<<endl;
+  cout<<"World: This is a count of the object left: "<<currentWorld->GetModel(module_name).use_count()<<endl;
   currentWorld->GetModel(module_name)->Fini();
-  // NeedToSetPtr -= 1;
+  cout<<"World: This is a count of the object left: "<<currentWorld->GetModel(module_name).use_count()<<endl;
+  // currentWorld->GetModel(module_name).reset();
+  // cout<<"World: model still exist: "<<currentWorld->GetModel(module_name)->GetName()<<endl;
+  // // NeedToSetPtr -= 1;
+  // cout<<"World: Contacts exist (after deleting): "<<currentWorld->GetPhysicsEngine()->GetContactManager()->GetContacts().size()<<endl;
+  // cout<<"World: Models counts"<<currentWorld->GetModelCount ()<<endl;
 }
 
 // void ControlCenter::readFileAndGenerateCommands(const char* fileName)

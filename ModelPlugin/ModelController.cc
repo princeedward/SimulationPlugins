@@ -17,6 +17,11 @@ GZ_REGISTER_MODEL_PLUGIN(ModelController)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ModelController::~ModelController()
 {
+	this->model.reset();
+	this->JointWR.reset();
+	this->JointWL.reset();
+	this->JointWF.reset();
+	this->JointCB.reset();
 }
 ModelController::ModelController() : ModelPlugin(),JointAngleKPID(5.5,0,0.75),ModelAngleKPID(1,0,0)
 {

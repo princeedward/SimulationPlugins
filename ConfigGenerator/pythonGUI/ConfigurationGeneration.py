@@ -60,6 +60,7 @@ class App(Frame):
         self.modellist = StringVar()
         self.adjacentnode = StringVar()
         self.savepathstr = StringVar()
+        self.del_confirm = IntVar()
         self.initflag = flag
         self.ServerConnected = 0
 
@@ -93,6 +94,7 @@ class App(Frame):
 
         #------------ Initializae GUI ---------------------------
         self.initUI()
+        self.DisableInsertByConnection()
         
     def initUI(self):
       
@@ -127,118 +129,130 @@ class App(Frame):
         name = Entry(f1, textvariable=self.modelname)
         name.place(x = 90, y = 5)
 
+        #--------------- Insert by Connection configuration box ------
+        insertByConn = ttk.Labelframe(f1, text='Insert By Connecting to Existing Models', width = 580, height = 240)
+        insertByConn.place(x = 5,y = 30)
+
+        #--------------- Insert by Connection configuration box ------
+        insertByPos = ttk.Labelframe(f1, text='Insert By Position', width = 180, height = 240)
+        insertByPos.place(x = 590,y = 30)
+
         #---------------- Radio selection -------------------------
-        self.Rel_pos = Radiobutton(f1, text='Connection', variable=self.InsertMethod, value='Connection', command = self.DisableXYZInput)
-        self.Abs_pos = Radiobutton(f1, text='Position', variable=self.InsertMethod, value='Position', command = self.EnableXYZInput)
+        self.Rel_pos = Radiobutton(insertByConn, text='Connection', variable=self.InsertMethod, value='Connection', command = self.DisableXYZInput)
+        self.Abs_pos = Radiobutton(insertByPos, text='Position', variable=self.InsertMethod, value='Position', command = self.EnableXYZInput)
         self.Abs_pos.select()  # this line doesn't work, haven't figure out why
-        self.Rel_pos.place(x = 10, y = 30)
-        self.Abs_pos.place(relx = 0.6, y = 30)
+        self.Rel_pos.place(x = 8, y = 2)
+        self.Abs_pos.place(x = 8, y = 2)
 
         #--------------- Connect to -------------------------------
-        label2 = Label(f1, text='Connect to:')
-        label2.place(x = 10, y = 55)
-        self.connectmodel = ttk.Combobox(f1, textvariable=self.connectedmodelvar) #, command = self.checkConnectivity
+        label2 = Label(insertByConn, text='Connect to:')
+        label2.place(x = 205, y = 5)
+        self.connectmodel = ttk.Combobox(insertByConn, textvariable=self.connectedmodelvar) #, command = self.checkConnectivity
         self.connectmodel['values'] = ()
         self.connectmodel.bind('<<ComboboxSelected>>',self.checkConnectivity)
-        self.connectmodel.place(x = 100, y = 55)
+        self.connectmodel.place(x = 295, y = 5)
 
         #--------------- Connected face of inserting module -------
-        label2 = Label(f1, text='Face of New Module')
-        label2.place(x = 60, y = 85)
+        label2 = Label(insertByConn, text='Face of New Module')
+        label2.place(x = 75, y = 35)
         bard = Image.open("SmallSmores.png")
         bardejov = ImageTk.PhotoImage(bard)
-        label3 = Label(f1, image=bardejov)
+        label3 = Label(insertByConn, image=bardejov)
         label3.image = bardejov
-        label3.place(x=90, y=140)
-        Back_face = Radiobutton(f1, text='Back Face', variable=self.Node1, value=3)
-        left_face = Radiobutton(f1, text='Left Face', variable=self.Node1, value=1)
-        right_face = Radiobutton(f1, text='Right Face', variable=self.Node1, value=2)
-        front_face = Radiobutton(f1, text='Front Face', variable=self.Node1, value=0)
-        front_face.select()
-        Back_face.place(x= 120, y = 120,anchor = CENTER)
-        front_face.place(x= 120, y = 250,anchor = CENTER)
-        right_face.place(x= 40, y = 200,anchor = CENTER)
-        left_face.place(x= 230, y = 200,anchor = CENTER)
+        label3.place(x=95, y=90)
+        self.Back_face = Radiobutton(insertByConn, text='Back Face', variable=self.Node1, value=3)
+        self.left_face = Radiobutton(insertByConn, text='Left Face', variable=self.Node1, value=1)
+        self.right_face = Radiobutton(insertByConn, text='Right Face', variable=self.Node1, value=2)
+        self.front_face = Radiobutton(insertByConn, text='Front Face', variable=self.Node1, value=0)
+        self.front_face.select()
+        self.Back_face.place(x= 125, y = 70,anchor = CENTER)
+        self.front_face.place(x= 125, y = 200,anchor = CENTER)
+        self.right_face.place(x= 45, y = 150,anchor = CENTER)
+        self.left_face.place(x= 235, y = 150,anchor = CENTER)
 
         #--------------- Connected face of existing module -------
-        label4 = Label(f1, text='Face of Existing Module')
-        label4.place(x = 360, y = 85)
-        label5 = Label(f1, image=bardejov)
+        label4 = Label(insertByConn, text='Face of Existing Module')
+        label4.place(x = 365, y = 35)
+        label5 = Label(insertByConn, image=bardejov)
         label5.image = bardejov
-        label5.place(x=380, y=140)
-        self.Back_face2 = Radiobutton(f1, text='Back Face', variable=self.Node2, value=3)
-        self.left_face2 = Radiobutton(f1, text='Left Face', variable=self.Node2, value=1)
-        self.right_face2 = Radiobutton(f1, text='Right Face', variable=self.Node2, value=2)
-        self.front_face2 = Radiobutton(f1, text='Front Face', variable=self.Node2, value=0)
+        label5.place(x=385, y=90)
+        self.Back_face2 = Radiobutton(insertByConn, text='Back Face', variable=self.Node2, value=3)
+        self.left_face2 = Radiobutton(insertByConn, text='Left Face', variable=self.Node2, value=1)
+        self.right_face2 = Radiobutton(insertByConn, text='Right Face', variable=self.Node2, value=2)
+        self.front_face2 = Radiobutton(insertByConn, text='Front Face', variable=self.Node2, value=0)
         self.front_face2.select()
-        self.Back_face2.place(x= 410, y = 120,anchor = CENTER)
-        self.front_face2.place(x= 410, y = 250,anchor = CENTER)
-        self.right_face2.place(x= 320, y = 200,anchor = CENTER)
-        self.left_face2.place(x= 520, y = 200,anchor = CENTER)
+        self.Back_face2.place(x= 415, y = 70,anchor = CENTER)
+        self.front_face2.place(x= 415, y = 200,anchor = CENTER)
+        self.right_face2.place(x= 325, y = 150,anchor = CENTER)
+        self.left_face2.place(x= 525, y = 150,anchor = CENTER)
 
         #---------------- Position Entries -------------------------
-        label6 = Label(f1, text='X: ')
-        label6.place(x = 610, y = 50)
-        self.x_coor = Entry(f1, textvariable=self.X_coor,width=10,state=NORMAL)
-        self.x_coor.place(x = 610, y = 75)
+        label6 = Label(insertByPos, text='X: ')
+        label6.place(x = 30, y = 40)
+        self.x_coor = Entry(insertByPos, textvariable=self.X_coor,width=10,state=NORMAL)
+        self.x_coor.place(x = 30, y = 65)
 
-        label7 = Label(f1, text='Y: ')
-        label7.place(x = 610, y = 100)
-        self.y_coor = Entry(f1, textvariable=self.Y_coor,width=10,state=NORMAL)
-        self.y_coor.place(x = 610, y = 125)
+        label7 = Label(insertByPos, text='Y: ')
+        label7.place(x = 30, y = 90)
+        self.y_coor = Entry(insertByPos, textvariable=self.Y_coor,width=10,state=NORMAL)
+        self.y_coor.place(x = 30, y = 115)
 
-        label8 = Label(f1, text='Z: ')
-        label8.place(x = 610, y = 150)
+        label8 = Label(insertByPos, text='Z: ')
+        label8.place(x = 30, y = 140)
         self.Z_coor.set(0.05)
-        self.z_coor = Entry(f1, textvariable=self.Z_coor,width=10,state=NORMAL)
-        self.z_coor.place(x = 610, y = 175)
+        self.z_coor = Entry(insertByPos, textvariable=self.Z_coor,width=10,state=NORMAL)
+        self.z_coor.place(x = 30, y = 165)
+
+        #--------------- Joint angle and orientation settings ------
+        angleInfo = ttk.Labelframe(f1, text='Joint Angle and Model Orientation Settings', width = 765, height = 170)
+        angleInfo.place(x = 5,y = 270)
 
         #--------------- Joint Angle Setting -----------------------
-        label9 = Label(f1, text='Joint Angle Bending ')
-        label9.place(x = 40, y = 280)
-        self.Joint3 = Scale(f1, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 90)
-        self.Joint3.place(x = 100, y = 330, anchor = CENTER)
-        label10 = Label(f1, text='Joint Angle Left Wheel ')
-        label10.place(x = 210, y = 280)
-        self.Joint1 = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
-        self.Joint1.place(x = 280, y = 330, anchor = CENTER)
+        label9 = Label(angleInfo, text='Joint Angle Bending ')
+        label9.place(x = 40, y = 10)
+        self.Joint3 = Scale(angleInfo, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 90)
+        self.Joint3.place(x = 100, y = 55, anchor = CENTER)
+        label10 = Label(angleInfo, text='Joint Angle Left Wheel ')
+        label10.place(x = 210, y = 10)
+        self.Joint1 = Scale(angleInfo, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
+        self.Joint1.place(x = 280, y = 55, anchor = CENTER)
 
-        label11 = Label(f1, text='Joint Angle Right Wheel ')
-        label11.place(x = 30, y = 360)
-        self.Joint2 = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
-        self.Joint2.place(x = 100, y = 410, anchor = CENTER)
-        label12 = Label(f1, text='Joint Angle Front Wheel ')
-        label12.place(x = 210, y = 360)
-        self.Joint0 = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
-        self.Joint0.place(x = 280, y = 410, anchor = CENTER)
+        label11 = Label(angleInfo, text='Joint Angle Right Wheel ')
+        label11.place(x = 30, y = 80)
+        self.Joint2 = Scale(angleInfo, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
+        self.Joint2.place(x = 100, y = 125, anchor = CENTER)
+        label12 = Label(angleInfo, text='Joint Angle Front Wheel ')
+        label12.place(x = 210, y = 80)
+        self.Joint0 = Scale(angleInfo, from_=0, to=360, orient=HORIZONTAL,length = 150, resolution = 90)
+        self.Joint0.place(x = 280, y = 125, anchor = CENTER)
 
         #--------------- Face Displacement ------------------------
-        label13 = Label(f1, text='Distance offset ')
-        label13.place(x = 380, y = 280)
-        doffste = Entry(f1, textvariable=self.C_dis,width=10)
-        doffste.place(x = 380, y = 310)
+        label13 = Label(angleInfo, text='Distance offset ')
+        label13.place(x = 380, y = 10)
+        doffste = Entry(angleInfo, textvariable=self.C_dis,width=10)
+        doffste.place(x = 380, y = 40)
 
-        label14 = Label(f1, text='Angle offset ')
-        label14.place(x = 380, y = 360)
-        aoffste = Entry(f1, textvariable=self.a_dis,width=10)
-        aoffste.place(x = 380, y = 390)
+        label14 = Label(angleInfo, text='Angle offset ')
+        label14.place(x = 380, y = 80)
+        aoffste = Entry(angleInfo, textvariable=self.a_dis,width=10)
+        aoffste.place(x = 380, y = 110)
 
         #--------------- Model Orientation ------------------------
-        label15 = Label(f1, text='Model Orientation ')
-        label15.place(x = 610, y = 210)
+        label15 = Label(angleInfo, text='Model Orientation ')
+        label15.place(x = 610, y = 10)
 
-        label16 = Label(f1, text='Row ')
-        label16.place(x = 610, y = 240)
-        self.row = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
-        self.row.place(x = 660, y = 280, anchor = CENTER)
-        label17 = Label(f1, text='Pitch ')
-        label17.place(x = 610, y = 310)
-        self.pitch = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
-        self.pitch.place(x = 660, y = 350, anchor = CENTER)
-        label18 = Label(f1, text='Yaw ')
-        label18.place(x = 610, y = 380)
-        self.yaw = Scale(f1, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
-        self.yaw.place(x = 660, y = 420, anchor = CENTER)
+        label16 = Label(angleInfo, text='Row ')
+        label16.place(x = 560, y = 45)
+        self.row = Scale(angleInfo, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
+        self.row.place(x = 660, y = 45, anchor = CENTER)
+        label17 = Label(angleInfo, text='Pitch ')
+        label17.place(x = 560, y = 85)
+        self.pitch = Scale(angleInfo, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
+        self.pitch.place(x = 660, y = 85, anchor = CENTER)
+        label18 = Label(angleInfo, text='Yaw ')
+        label18.place(x = 560, y = 125)
+        self.yaw = Scale(angleInfo, from_=0, to=360, orient=HORIZONTAL,length = 100, resolution = 90)
+        self.yaw.place(x = 660, y = 125, anchor = CENTER)
 
         #-------------- Select Model -----------------------------
         label19 = Label(f2, text='Select Model ')
@@ -282,19 +296,29 @@ class App(Frame):
         self.DeleteButton.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
 
         #---------------- Add More Connections --------------------
-        more_conn = ttk.Labelframe(f2, text='Add More Connection ', width = 220, height = 140)
+        more_conn = ttk.Labelframe(f2, text='Add More Connections ', width = 350, height = 140)
         more_conn.place(x = 400, y = 50)
 
         label24 = Label(more_conn, text='Select Possible Connection ')
         label24.place(x = 10, y = 10)
-        self.nodeselect = ttk.Combobox(more_conn, textvariable=self.adjacentnode)
+        self.nodeselect = ttk.Combobox(more_conn, textvariable=self.adjacentnode, width = 38)
         self.nodeselect['values'] = ()
         self.nodeselect.bind('<<ComboboxSelected>>',self.EnableAddNewConnection)
         self.nodeselect.place(x = 10, y = 40)
 
         self.ConnectButton = Button(more_conn, text="Connect")
         self.ConnectButton["command"] = self.AddNewConnection
-        self.ConnectButton.place(x = 130, y = 80)
+        self.ConnectButton.place(x = 260, y = 80)
+
+        #---------------- Delete Whole Configuration -----------------
+        del_conf = ttk.Labelframe(f2, text='Delete Entire Configuration ', width = 350, height = 50)
+        del_conf.place(x = 400, y = 200)
+
+        self.del_conf_confirm = Checkbutton(del_conf, text = "Please confirm", variable = self.del_confirm, onvalue = 1, offvalue = 0, command = self.ConfirmCheck, state = DISABLED)
+        self.del_conf_confirm.place(x = 10, y = 5)
+
+        self.DeleteConfigButton = Button(del_conf, text="delete", width='16', command = self.DeleteConfiguration, state = DISABLED)
+        self.DeleteConfigButton.place(x = 180, y = 0)
 
         #---------------- Insert Model -------------------------------
         InsertButton = Button(f1, text="Insert")
@@ -303,13 +327,13 @@ class App(Frame):
 
         #---------------- Save Button --------------------------------
         savepathlabel = Label(f1, text='Save path: ')
-        savepathlabel.place(x = window_width-Border_width-555, y = window_height-Border_hieht-7, anchor = SE)
+        savepathlabel.place(x = window_width-Border_width-475, y = window_height-Border_hieht-7, anchor = SE)
         savepathlabel2 = Label(f2, text='Save path: ')
-        savepathlabel2.place(x = window_width-Border_width-555, y = window_height-Border_hieht-7, anchor = SE)
-        self.savepathstr.set("/home/edward/.gazebo/models/SMORES7Stella/");
-        self.savepath1 = Entry(f1, textvariable=self.savepathstr, width = 45)
+        savepathlabel2.place(x = window_width-Border_width-475, y = window_height-Border_hieht-7, anchor = SE)
+        self.savepathstr.set("~/.gazebo/models/SMORES7Stella/");
+        self.savepath1 = Entry(f1, textvariable=self.savepathstr, width = 35)
         self.savepath1.place(x = window_width-Border_width-190, y = window_height-Border_hieht-7, anchor = SE)
-        self.savepath2 = Entry(f2, textvariable=self.savepathstr, width = 45)
+        self.savepath2 = Entry(f2, textvariable=self.savepathstr, width = 35)
         self.savepath2.place(x = window_width-Border_width-190, y = window_height-Border_hieht-7, anchor = SE)
         self.saveButton = Button(f1, text="Save", command = self.WriteFile)
         self.saveButton.place(x = window_width-Border_width-125, y = window_height-Border_hieht-5, anchor = SE)
@@ -327,6 +351,8 @@ class App(Frame):
       # open file on your own
       if filename:
         self.BuildConfigurationFromFile(filename)
+      self.loadButton["state"] = DISABLED
+      self.loadButton2["state"] = DISABLED
 
     def BuildConfigurationFromFile(self, filename):
       # Delete the exiting configuration first
@@ -437,11 +463,13 @@ class App(Frame):
       self.x_coor["state"] = NORMAL
       self.y_coor["state"] = NORMAL
       self.z_coor["state"] = NORMAL
+      self.DisableInsertByConnection()
 
     def DisableXYZInput(self,*args):
       self.x_coor["state"] = DISABLED
       self.y_coor["state"] = DISABLED
       self.z_coor["state"] = DISABLED
+      self.EnableInsertByConnection()
 
     def updateModuleList(self):
       a_model_list = []
@@ -652,6 +680,7 @@ class App(Frame):
       self.DeleteButtonDisable()
 
     def DeleteConfiguration(self):
+      print "Model names: ",[x.ModelName for x in self.ModuleList]
       for eachmodel in self.ModuleList:
         newmessage = ConfigMessage()
         newmessage.ModelName = eachmodel.ModelName
@@ -661,12 +690,15 @@ class App(Frame):
           newmessage.JointAngles.append(0)
         newmessage.DeleteFlag = True
         self.communicator.publish(newmessage)
+        call(['gzfactory','delete','-m',eachmodel.ModelName])
 
       self.ModuleList = []
       self.ConnectionList = []
       self.updateModuleList()
       self.modellist.set('')
       self.DeleteButtonDisable()
+      self.del_conf_confirm.deselect()
+      self.DeleteConfigButton["state"] = DISABLED
 
     def DeleteButtonDisable(self):
       self.DeleteButton["state"] = DISABLED
@@ -683,6 +715,34 @@ class App(Frame):
         return "Right"
       if node == 3:
         return "Back"
+
+    def ConfirmCheck(self):
+      if self.del_confirm.get() == 1:
+        self.DeleteConfigButton["state"] = NORMAL
+      else:
+        self.DeleteConfigButton["state"] = DISABLED
+
+    def DisableInsertByConnection(self):
+      self.connectmodel["state"] = DISABLED
+      self.Back_face["state"] = DISABLED
+      self.left_face["state"] = DISABLED
+      self.right_face["state"] = DISABLED
+      self.front_face["state"] = DISABLED
+      self.Back_face2["state"] = DISABLED
+      self.left_face2["state"] = DISABLED
+      self.right_face2["state"] = DISABLED
+      self.front_face2["state"] = DISABLED
+
+    def EnableInsertByConnection(self):
+      self.connectmodel["state"] = NORMAL
+      self.Back_face["state"] = NORMAL
+      self.left_face["state"] = NORMAL
+      self.right_face["state"] = NORMAL
+      self.front_face["state"] = NORMAL
+      self.Back_face2["state"] = NORMAL
+      self.left_face2["state"] = NORMAL
+      self.right_face2["state"] = NORMAL
+      self.front_face2["state"] = NORMAL
 
 def degree2rad(angle):
   return angle/180.0*PI
