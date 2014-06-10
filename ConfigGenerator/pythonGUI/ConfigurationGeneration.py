@@ -29,7 +29,7 @@ window_width = 800
 window_height = 520
 Border_width = 20
 Border_hieht = 40
-PI = pi           #3.1415926
+PI = pi           #3.1415926 this value is close to the pi they used in the simulation
 
 class App(Frame):
   
@@ -82,15 +82,12 @@ class App(Frame):
         if flag == 0 or flag == 2:
           self.communicator = GzCommunicator()
           self.communicator.StartCommunicator("/gazebo/Configuration/configSubscriber",'config_message.msgs.ConfigMessage')
-          # pdb.set_trace()
-          # self.manager = Manager()
           self.ServerConnected = 1
-          # try:
-          # pdb.set_trace()
+          #++++++++++ These lines using a pygazebo library ++++++
+          #++++++++++ Can only be used in gazebo 2.2+ +++++++++++
+          # self.manager = Manager()
           # self.publisher = self.manager.advertise('/gazebo/Configuration/configSubscriber','config_message.msgs.ConfigMessage')  # 'config_message.msgs.ConfigMessage' /gazebo/Configuration/configSubscriber
           # self.publisher.wait_for_listener()
-          # except ValueError:
-          #   self.ServerConnected = 0
 
         #------------ Initializae GUI ---------------------------
         self.initUI()
@@ -99,15 +96,9 @@ class App(Frame):
     def initUI(self):
       
         self.parent.title("Configuration Generator")
-        # self.style = Style()
-        # self.style.theme_use("default")
-        
-        # frame1 = Frame(self, relief=RAISED, borderwidth=1)
-        # frame1.pack(fill=BOTH, expand=1)
-        
         self.pack(fill=BOTH, expand=1)
-        # okButton = Button(self, text="OK")
-        # okButton.pack(side=RIGHT)
+
+        # --------------- Tabs --------------------------------------
         n = ttk.Notebook(self)
         f1 = Frame(n,height=window_height-Border_hieht,width=window_width-Border_width,relief=RAISED,); # first page, which would get widgets gridded into it
         f2 = Frame(n,height=window_height-Border_hieht,width=window_width-Border_width,relief=RAISED,); # second page
@@ -265,8 +256,6 @@ class App(Frame):
         #---------------- Joint Angle Setting -------------------
         lf = ttk.Labelframe(f2, text='Joint Angle Modification ', width = 350, height = 180)
         lf.place(x = 10, y = 50)
-        # label24 = Label(f2, text='Joint Angle Modification ')
-        # label24.place(x = 10, y = 40)
         label20 = Label(lf, text='Joint Angle Bending ')
         label20.place(x = 20, y = 10)
         self.Joint_3 = Scale(lf, from_=-90, to=90, orient=HORIZONTAL,length = 150, resolution = 5, command = self.ChangeJointAngle)
@@ -493,7 +482,6 @@ class App(Frame):
       return False
 
     def checkConnectivity(self,*args):
-      # print "Check the connectivity"
       themodule = self.findModule(self.connectedmodelvar.get())
       if len(themodule.nodes[3]) != 0:
         self.Back_face2["state"] = DISABLED
@@ -524,10 +512,10 @@ class App(Frame):
       print "Coor info",newmessage.ModelPosition
       for i in xrange(4):
         newmessage.JointAngles.append(amodule.JointAngle[i])
-      # print "Listeners are ",self.publisher.showlisteners()
+      self.communicator.publish(newmessage)
+      # ++++++++ These Lines for pygazebo +++++++++++++
       # self.newconnection.sendData(newmessage)
       # self.publisher.publish(newmessage)
-      self.communicator.publish(newmessage)
       # eventlet.sleep(1.0)
       print "Information published"
 
@@ -611,9 +599,6 @@ class App(Frame):
       f.close()
       self.saveButton["state"] = DISABLED
       self.saveButton2["state"] = DISABLED
-      # toplevel = Toplevel(height=60, width=100)
-      # label1 = Label(toplevel, text="Configuration Saved")
-      # label1.pack()
 
     def SaveEnable(self):
       self.saveButton["state"] = NORMAL
