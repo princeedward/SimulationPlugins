@@ -1,29 +1,13 @@
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Filename:  ModelController.hh
-// Author:  Edward Cui
-// Contact: cyk1990995@gmail.com
-// Last updated:  1/6/2014
-// Description: 
-// Commit info: git@github.com:princeedward/SimulationPlugins.git
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #include "ModelController.hh"
 
-using namespace std;
-using namespace gazebo;
-GZ_REGISTER_MODEL_PLUGIN(ModelController)
+using std::vector;
+using std::string;
+using std::cout;
+using std::endl;
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Model Controller Constructor
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-ModelController::~ModelController()
-{
-	this->model.reset();
-	this->JointWR.reset();
-	this->JointWL.reset();
-	this->JointWF.reset();
-	this->JointCB.reset();
-}
-ModelController::ModelController() : ModelPlugin(),JointAngleKPID(5.5,0,0.75),ModelAngleKPID(1,0,0)
+namespace gazebo{
+ModelController::ModelController() 
+		: ModelPlugin(), JointAngleKPID(5.5,0,0.75), ModelAngleKPID(1,0,0)
 {
 	// Initialize variables
 	WheelRadius =  0.045275;
@@ -31,12 +15,20 @@ ModelController::ModelController() : ModelPlugin(),JointAngleKPID(5.5,0,0.75),Mo
 	AccelerationRate = 8;
 	PlanarMotionStopThreshold = 0.016;
 
-	ExecutionSate = 0;
-	StartExecution = false;
-	CommandPriority = 0;
+	executionSate = 0;
+	startExecution = false;
+	commandPriority = 0;
 
 	// A hint of model been initialized
 	printf("Model Initiated\n");
+}
+ModelController::~ModelController()
+{
+	this->model.reset();
+	this->jointWR.reset();
+	this->jointWL.reset();
+	this->jointWF.reset();
+	this->jointCB.reset();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -49,7 +41,7 @@ void ModelController::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 	// Initialize the subscribers
 	gazebo::transport::NodePtr node(new gazebo::transport::Node());
 	node->Init();
-	this->sub = node->Subscribe("~/Welcome",&ModelController::welcomInfoProcessor, this);
+	this->welcomeInfoSub = node->Subscribe("~/Welcome",&ModelController::WelcomInfoProcessor, this);
 	// commandSubscriber = node->Subscribe("~/collision_map/command", &CollisionMapCreator::create, this);
 	
 	// Bind function which will be executed in each iteration
@@ -59,7 +51,7 @@ void ModelController::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // This function will be executed When model received welcome message from world plugin
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-void ModelController::welcomInfoProcessor(GzStringPtr &msg)
+void ModelController::WelcomInfoProcessor(GzStringPtr &msg)
 {
 	string InfoReceived = msg->data();
 	// Do something useful here
@@ -71,39 +63,39 @@ void ModelController::SystemInitialization(physics::ModelPtr parentModel)
 {
 	// Get all the pointers point to right objects
 	this->model = parentModel;
-	this->JointWR = model->GetJoint("Right_wheel_hinge");
-	this->JointWL = model->GetJoint("Left_wheel_hinge");
-	this->JointWF = model->GetJoint("Front_wheel_hinge");
-	this->JointCB = model->GetJoint("Center_hinge");
-	JointWRP.JointX = JointWR;
-	JointWRP.Need2BeSet = false;
-	JointWRP.JointErrorHis = 0;
-	JointWRP.JointErrorAccu = 0;
-	JointWLP.JointX = JointWL;
-	JointWLP.Need2BeSet = false;
-	JointWLP.JointErrorHis = 0;
-	JointWLP.JointErrorAccu = 0;
-	JointWFP.JointX = JointWF;
-	JointWFP.Need2BeSet = false;
-	JointWFP.JointErrorHis = 0;
-	JointWFP.JointErrorAccu = 0;
-	JointCBP.JointX = JointCB;
-	JointCBP.Need2BeSet = false;
-	JointCBP.JointErrorHis = 0;
-	JointCBP.JointErrorAccu = 0;
+	this->jointWR = model->GetJoint("Right_wheel_hinge");
+	this->jointWL = model->GetJoint("Left_wheel_hinge");
+	this->jointWF = model->GetJoint("Front_wheel_hinge");
+	this->jointCB = model->GetJoint("Center_hinge");
+	jointWRP.JointX = jointWR;
+	jointWRP.Need2BeSet = false;
+	jointWRP.JointErrorHis = 0;
+	jointWRP.JointErrorAccu = 0;
+	jointWLP.JointX = jointWL;
+	jointWLP.Need2BeSet = false;
+	jointWLP.JointErrorHis = 0;
+	jointWLP.JointErrorAccu = 0;
+	jointWFP.JointX = jointWF;
+	jointWFP.Need2BeSet = false;
+	jointWFP.JointErrorHis = 0;
+	jointWFP.JointErrorAccu = 0;
+	jointCBP.JointX = jointCB;
+	jointCBP.Need2BeSet = false;
+	jointCBP.JointErrorHis = 0;
+	jointCBP.JointErrorAccu = 0;
 	// Setting the model states
 	// Setting the maximium torque of the two wheels
-	this->JointWR->SetMaxForce(0,JointWR->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
-	this->JointWL->SetMaxForce(0,JointWL->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
+	this->jointWR->SetMaxForce(0,jointWR->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
+	this->jointWL->SetMaxForce(0,jointWL->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
 	// Setting the maximium torque of the front wheel
-	this->JointWF->SetMaxForce(0,JointWF->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
+	this->jointWF->SetMaxForce(0,jointWF->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
 	// Setting the maximium torque of the body bending joint
-	this->JointCB->SetMaxForce(0,JointCB->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
+	this->jointCB->SetMaxForce(0,jointCB->GetSDF()->GetElement("physics")->GetElement("ode")->GetElement("max_force")->Get<double>());
 	// Set the angle of the hinge in the center to zero
 	// math::Angle InitialAngle(0.00);
-	// this->JointCB->SetAngle(0, InitialAngle);
+	// this->jointCB->SetAngle(0, InitialAngle);
 	// math::Angle AngleNeed2Be(0.49778);
-	// this->JointCB->SetAngle(0, AngleNeed2Be);
+	// this->jointCB->SetAngle(0, AngleNeed2Be);
 
 	
 	// physics::ModelState CurrentModelState(model);
@@ -111,14 +103,14 @@ void ModelController::SystemInitialization(physics::ModelPtr parentModel)
 	string TopicNamePub = "~/" + model->GetName() + "_model";
 	gazebo::transport::NodePtr node(new gazebo::transport::Node());
 	node->Init(model->GetName());
-	this->CommandSub = node->Subscribe(TopicName,&ModelController::CommandDecoding, this);
-	this->CommandPub = node->Advertise<command_message::msgs::CommandMessage>(TopicNamePub);
+	this->commandSub = node->Subscribe(TopicName,&ModelController::CommandDecoding, this);
+	this->commandPub = node->Advertise<command_message::msgs::CommandMessage>(TopicNamePub);
 	CollisionPubAndSubInitialization();
 	
 	command_message::msgs::CommandMessage feed_back_message;
 	feed_back_message.set_messagetype(5);
 	feed_back_message.set_stringmessage(model->GetName());
-	CommandPub->Publish(feed_back_message);
+	commandPub->Publish(feed_back_message);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -129,33 +121,33 @@ void ModelController::OnSystemRunning(const common::UpdateInfo & /*_info*/)
 	// Update variables that need to be updated in each iteration
 	JointAngleUpdateInJointPlus();
 	// Do something useful after simulation begins
-	if (ExecutionSate == 1)
+	if (executionSate == 1)
 	{
-		math::Vector2d final_position(TargetPosition.pos.x,TargetPosition.pos.y);
-		math::Angle final_orientation(TargetPosition.pos.z);
+		math::Vector2d final_position(targetPosition.pos.x,targetPosition.pos.y);
+		math::Angle final_orientation(targetPosition.pos.z);
 		Move2Point(final_position,final_orientation);
-		if (StartExecution)
+		if (startExecution)
 		{
 			PositionTracking();
 		}
 	}
-	if (ExecutionSate == 2)
+	if (executionSate == 2)
 	{
 		for (int i = 0; i < 4; ++i)
 		{
-			JointPIDController(GetJointPlus(i), JointAngleShouldBe[i]);
+			JointPIDController(GetJointPlus(i), jointAngleShouldBe[i]);
 		}
-		if (StartExecution)
+		if (startExecution)
 		{
 			JointAngleTracking();
 		}
 	}
-	if (ExecutionSate == 3)
+	if (executionSate == 3)
 	{
-		JointPIDController(GetJointPlus(0), JointAngleShouldBe[0]);
-		JointPIDController(GetJointPlus(3), JointAngleShouldBe[3]);
-		SetJointSpeed(JointWL, 0, LftWheelSpeed);
-		SetJointSpeed(JointWR, 0, RgtWheelSpeed);
+		JointPIDController(GetJointPlus(0), jointAngleShouldBe[0]);
+		JointPIDController(GetJointPlus(3), jointAngleShouldBe[3]);
+		SetJointSpeed(jointWL, 0, lftWheelSpeed);
+		SetJointSpeed(jointWR, 0, rgtWheelSpeed);
 	}
 }
 
@@ -176,17 +168,17 @@ void ModelController::CollisionPubAndSubInitialization(void)
 	// cout<<"Mode: node name is '"<<model->GetName()<<"'"<<endl;
 	string TopicName = "~/" + model->GetName() + "::FrontWheel::front_contact";
 	// cout<<"Mode: node topic is '"<<TopicName<<"'"<<endl;
-	this->LinkCollisonSub[0] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
+	this->linkCollisonSub[0] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
 	TopicName = "~/" + model->GetName() + "::UHolderBody::UHolder_contact";
 	// cout<<"Mode: node topic is '"<<TopicName<<"'"<<endl;
-	this->LinkCollisonSub[1] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
+	this->linkCollisonSub[1] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
 	TopicName = "~/" + model->GetName() + "::LeftWheel::LeftWheel_contact";
-	this->LinkCollisonSub[2] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
+	this->linkCollisonSub[2] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
 	TopicName = "~/" + model->GetName() + "::RightWheel::RightWheel_contact";
-	this->LinkCollisonSub[3] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
+	this->linkCollisonSub[3] = node1->Subscribe(TopicName,&ModelController::CollisionReceiverProcessor,this);
 
 	string ColPubName = "~/"+model->GetName()+"_Collision";
-	CollisionInfoToServer = node1->Advertise<collision_message_plus::msgs::CollisionMessage>(ColPubName);
+	collisionInfoToServer = node1->Advertise<collision_message_plus::msgs::CollisionMessage>(ColPubName);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -219,19 +211,11 @@ void ModelController::CollisionReceiverProcessor(GzStringPtr &msg)
 	msgs::Pose PositionOfCollisionLink = msgs::Convert(model->GetLink(LinkName)->GetWorldPose());
 	CollisionMsgsPush.mutable_positioncol1()->CopyFrom(PositionOfCollisionLink);
 
-	CollisionInfoToServer->Publish(CollisionMsgsPush);
+	collisionInfoToServer->Publish(CollisionMsgsPush);
 }
 
 //------------------- End Region ----------------------------------
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// This function will be called when received an command from world plugin
-//            The format of the command might be a gait table
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-void ModelController::CommandReceiving(CommandMessagePtr &msg)
-{
-	//this->MessageArray.push_back(msg);
-}
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // This function will be called in the OnSystemRunning(), once for a control period
 //            The format of the command might be a gait table
@@ -246,72 +230,72 @@ void ModelController::CommandDecoding(CommandMessagePtr &msg)
 	{
 		// This line may need to be changed
 		// When using the new representation, the old connection management mechanism may be unnecessary
-		case 1:{NameOfConnectedModels.push_back(msg->stringmessage());break;}
+		case 1:{nameOfConnectedModels.push_back(msg->stringmessage());break;}
 		case 2:
 		{
-			this->ExecutionSate = 1;
-			this->TargetPosition = gazebo::msgs::Convert(msg->positionneedtobe());
-			CommandPub->Publish(feed_back_message);
+			this->executionSate = 1;
+			this->targetPosition = gazebo::msgs::Convert(msg->positionneedtobe());
+			commandPub->Publish(feed_back_message);
 			break;
 		}
 		case 3:
 		{
-			this->ExecutionSate = 2;
+			this->executionSate = 2;
 			for (int i = 0; i < 4; ++i)
 			{
 				if (msg->jointgaittablestatus(i))
 				{
-					this->JointAngleShouldBe[i] = msg->jointgaittable(i);
+					this->jointAngleShouldBe[i] = msg->jointgaittable(i);
 				}
 			}
-			cout<<"Model: "<<model->GetName()<<":joint0:"<<JointAngleShouldBe[0]<<endl;
-			cout<<"Model: "<<model->GetName()<<":joint1:"<<JointAngleShouldBe[1]<<endl;
-			cout<<"Model: "<<model->GetName()<<":joint2:"<<JointAngleShouldBe[2]<<endl;
-			cout<<"Model: "<<model->GetName()<<":joint3:"<<JointAngleShouldBe[3]<<endl;
-			CommandPub->Publish(feed_back_message);
+			cout<<"Model: "<<model->GetName()<<":joint0:"<<jointAngleShouldBe[0]<<endl;
+			cout<<"Model: "<<model->GetName()<<":joint1:"<<jointAngleShouldBe[1]<<endl;
+			cout<<"Model: "<<model->GetName()<<":joint2:"<<jointAngleShouldBe[2]<<endl;
+			cout<<"Model: "<<model->GetName()<<":joint3:"<<jointAngleShouldBe[3]<<endl;
+			commandPub->Publish(feed_back_message);
 			break;
 		}
 		case 4:
 		{
-			this->ExecutionSate = 3;
+			this->executionSate = 3;
 			for (int i = 0; i < 4; ++i)
 			{
 				if (i==0 || i==3)
 				{
 					if (msg->jointgaittablestatus(i))
 					{
-						this->JointAngleShouldBe[i] = msg->jointgaittable(i);
+						this->jointAngleShouldBe[i] = msg->jointgaittable(i);
 					}
 				}else{
 					if (msg->jointgaittablestatus(i) && i == 1)
 					{
-						LftWheelSpeed = msg->jointgaittable(i);
+						lftWheelSpeed = msg->jointgaittable(i);
 					}
 					if (msg->jointgaittablestatus(i) && i == 2)
 					{
-						RgtWheelSpeed = msg->jointgaittable(i);
+						rgtWheelSpeed = msg->jointgaittable(i);
 					}
 				}
 			}
-			CommandPub->Publish(feed_back_message);
+			commandPub->Publish(feed_back_message);
 			break;
 		}
 		// case 5:
 		// {
-		// 	JointWF->SetAngle(0,math::Angle(msg->jointgaittable(0)));
-		// 	JointWL->SetAngle(0,math::Angle(msg->jointgaittable(1)));
-		// 	JointWR->SetAngle(0,math::Angle(msg->jointgaittable(2)));
-		// 	JointCB->SetAngle(0,math::Angle(msg->jointgaittable(3)));
+		// 	jointWF->SetAngle(0,math::Angle(msg->jointgaittable(0)));
+		// 	jointWL->SetAngle(0,math::Angle(msg->jointgaittable(1)));
+		// 	jointWR->SetAngle(0,math::Angle(msg->jointgaittable(2)));
+		// 	jointCB->SetAngle(0,math::Angle(msg->jointgaittable(3)));
 		// 	cout<<"Model: Initial Joint Angle Set "<<endl;
 		// 	break;
 		// }
 	}
 	if (commandType == 0 || commandType == 5)
 	{
-		StartExecution = false;
+		startExecution = false;
 	}else{
-		StartExecution = true;
-		CommandPriority = msg->priority();
+		startExecution = true;
+		commandPriority = msg->priority();
 	}
 }
 
@@ -351,10 +335,10 @@ void ModelController::JointPIDController(JointPlus &CurrentJoint, double AngleDe
 
 void ModelController::JointAngleUpdateInJointPlus(void)
 {
-	JointWRP.JointAngleNow = GetJointAngle(JointWR,0);
-	JointWLP.JointAngleNow = GetJointAngle(JointWL,0);
-	JointWFP.JointAngleNow = GetJointAngle(JointWF,0);
-	JointCBP.JointAngleNow = GetJointAngle(JointCB,0);
+	jointWRP.JointAngleNow = GetJointAngle(jointWR,0);
+	jointWLP.JointAngleNow = GetJointAngle(jointWL,0);
+	jointWFP.JointAngleNow = GetJointAngle(jointWF,0);
+	jointCBP.JointAngleNow = GetJointAngle(jointCB,0);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -385,33 +369,33 @@ void ModelController::SetJointSpeed(physics::JointPtr CurrentJoint, int RotAxis,
 void ModelController::JointAngleTracking(void)
 {
 	bool execution_finished_flag = true;
-	if (abs(GetJointAngle(JointWF,0).Radian()-JointAngleShouldBe[0])>EXECUTIONERROR)
+	if (abs(GetJointAngle(jointWF,0).Radian()-jointAngleShouldBe[0])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		// cout<<"Model: "<<model->GetName() <<" joint 0 difference "<<abs(GetJointAngle(JointWF,0).Radian()-JointAngleShouldBe[0])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 0 difference "<<abs(GetJointAngle(jointWF,0).Radian()-jointAngleShouldBe[0])<<endl;
 	}
-	if (abs(GetJointAngle(JointWL,0).Radian()-JointAngleShouldBe[1])>EXECUTIONERROR)
+	if (abs(GetJointAngle(jointWL,0).Radian()-jointAngleShouldBe[1])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		// cout<<"Model: "<<model->GetName() <<" joint 1 difference "<<abs(GetJointAngle(JointWL,0).Radian()-JointAngleShouldBe[1])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 1 difference "<<abs(GetJointAngle(jointWL,0).Radian()-jointAngleShouldBe[1])<<endl;
 	}
-	if (abs(GetJointAngle(JointWR,0).Radian()-JointAngleShouldBe[2])>EXECUTIONERROR)
+	if (abs(GetJointAngle(jointWR,0).Radian()-jointAngleShouldBe[2])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		// cout<<"Model: "<<model->GetName() <<" joint 2 difference "<<abs(GetJointAngle(JointWR,0).Radian()-JointAngleShouldBe[2])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 2 difference "<<abs(GetJointAngle(jointWR,0).Radian()-jointAngleShouldBe[2])<<endl;
 	}
-	if (abs(GetJointAngle(JointCB,0).Radian()-JointAngleShouldBe[3])>EXECUTIONERROR)
+	if (abs(GetJointAngle(jointCB,0).Radian()-jointAngleShouldBe[3])>EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
-		// cout<<"Model: "<<model->GetName() <<" joint 3 difference "<<abs(GetJointAngle(JointCB,0).Radian()-JointAngleShouldBe[3])<<endl;
+		// cout<<"Model: "<<model->GetName() <<" joint 3 difference "<<abs(GetJointAngle(jointCB,0).Radian()-jointAngleShouldBe[3])<<endl;
 	}
 	if (execution_finished_flag)
 	{
 		command_message::msgs::CommandMessage feed_back_message;
 		feed_back_message.set_messagetype(0);
-		feed_back_message.set_priority(CommandPriority);
+		feed_back_message.set_priority(commandPriority);
 		feed_back_message.set_stringmessage(model->GetName()+":finished");
-		CommandPub->Publish(feed_back_message);
+		commandPub->Publish(feed_back_message);
 	}
 }
 
@@ -419,24 +403,24 @@ void ModelController::PositionTracking(void)
 {
 	bool execution_finished_flag = true;
 	math::Vector2d module_pos(GetModelCentralCoor().pos.x,GetModelCentralCoor().pos.y);
-	math::Vector2d desired_pos(TargetPosition.pos.x,TargetPosition.pos.y);
+	math::Vector2d desired_pos(targetPosition.pos.x,targetPosition.pos.y);
 	if (module_pos.Distance(desired_pos)>2*EXECUTIONERROR)
 	{
 		execution_finished_flag = false;
 		cout<<"Model: distance is : "<<module_pos.Distance(desired_pos)<<endl;
 	}
-	if (abs(TargetPosition.pos.z-GetModelCentralCoor().rot.GetYaw())>(EXECUTIONERROR+0.002))
+	if (abs(targetPosition.pos.z-GetModelCentralCoor().rot.GetYaw())>(EXECUTIONERROR+0.002))
 	{
 		execution_finished_flag = false;
-		cout<<"Model: angle difference is : "<<abs(TargetPosition.pos.z-GetModelCentralCoor().rot.GetYaw())<<endl;
+		cout<<"Model: angle difference is : "<<abs(targetPosition.pos.z-GetModelCentralCoor().rot.GetYaw())<<endl;
 	}
 	if (execution_finished_flag)
 	{
 		command_message::msgs::CommandMessage feed_back_message;
 		feed_back_message.set_messagetype(0);
-		feed_back_message.set_priority(CommandPriority);
+		feed_back_message.set_priority(commandPriority);
 		feed_back_message.set_stringmessage(model->GetName()+":finished");
-		CommandPub->Publish(feed_back_message);
+		commandPub->Publish(feed_back_message);
 	}
 }
 
@@ -484,7 +468,20 @@ math::Angle ModelController::AngleCalculation2Points(math::Vector2d StartPoint, 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // This function is used to apply a complementary filter
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-double ModelController::ComplementaryFilter(double FilteringValue, double ComplementFilterPar)
+double ModelController::ComplementaryFilter(double FilteringValue)
+{
+	static double ValueRecorder = 0;
+	double ComplementFilterPar = 0.9;
+	double FiltedValue;
+	FiltedValue = (1 - ComplementFilterPar)*FilteringValue + ComplementFilterPar*ValueRecorder;
+
+	ValueRecorder = FiltedValue;
+
+	return FiltedValue;
+}
+
+double ModelController::ComplementaryFilter(double FilteringValue, 
+		double ComplementFilterPar)
 {
 	static double ValueRecorder = 0;
 	double FiltedValue;
@@ -502,17 +499,17 @@ JointPlus & ModelController::GetJointPlus(int node_ID)
 {
 	if (node_ID == 1)
 	{
-		return JointWLP;
+		return jointWLP;
 	}
 	if (node_ID == 2)
 	{
-		return JointWRP;
+		return jointWRP;
 	}
 	if (node_ID == 3)
 	{
-		return JointCBP;
+		return jointCBP;
 	}
-	return JointWFP;
+	return jointWFP;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -566,27 +563,27 @@ void ModelController::AnglePIDController(math::Angle DesiredAngle, math::Angle C
 	RightWheelSpeed = CurrentSpeed.y + DiffSpeedControl;
 
 	// Maximium speed checking
-	// if (abs(RightWheelSpeed)>JointWRP.MaximiumRotRate)
+	// if (abs(RightWheelSpeed)>jointWRP.MaximiumRotRate)
 	// {
-	// 	RightWheelSpeed = RightWheelSpeed>0?JointWRP.MaximiumRotRate:-JointWRP.MaximiumRotRate;
+	// 	RightWheelSpeed = RightWheelSpeed>0?jointWRP.MaximiumRotRate:-jointWRP.MaximiumRotRate;
 	// 	LeftWheelSpeed = RightWheelSpeed - 2*DiffSpeedControl;
-	// 	if (abs(LeftWheelSpeed)>JointWLP.MaximiumRotRate)
+	// 	if (abs(LeftWheelSpeed)>jointWLP.MaximiumRotRate)
 	// 	{
-	// 		LeftWheelSpeed = LeftWheelSpeed>0?JointWLP.MaximiumRotRate:-JointWLP.MaximiumRotRate;
+	// 		LeftWheelSpeed = LeftWheelSpeed>0?jointWLP.MaximiumRotRate:-jointWLP.MaximiumRotRate;
 	// 	}
 	// }
-	// if (abs(LeftWheelSpeed)>JointWLP.MaximiumRotRate)
+	// if (abs(LeftWheelSpeed)>jointWLP.MaximiumRotRate)
 	// {
-	// 	LeftWheelSpeed = LeftWheelSpeed>0?JointWLP.MaximiumRotRate:-JointWLP.MaximiumRotRate;
+	// 	LeftWheelSpeed = LeftWheelSpeed>0?jointWLP.MaximiumRotRate:-jointWLP.MaximiumRotRate;
 	// 	RightWheelSpeed = LeftWheelSpeed + 2*DiffSpeedControl;
-	// 	if (abs(RightWheelSpeed)>JointWRP.MaximiumRotRate)
+	// 	if (abs(RightWheelSpeed)>jointWRP.MaximiumRotRate)
 	// 	{
-	// 		RightWheelSpeed = RightWheelSpeed>0?JointWRP.MaximiumRotRate:-JointWRP.MaximiumRotRate;
+	// 		RightWheelSpeed = RightWheelSpeed>0?jointWRP.MaximiumRotRate:-jointWRP.MaximiumRotRate;
 	// 	}
 	// }
 
-	SetJointSpeed(JointWR, 0, RightWheelSpeed);
-	SetJointSpeed(JointWL, 0, LeftWheelSpeed);
+	SetJointSpeed(jointWR, 0, RightWheelSpeed);
+	SetJointSpeed(jointWL, 0, LeftWheelSpeed);
 	AngleErrorHis = AngleError;
 }
 
@@ -620,3 +617,5 @@ void ModelController::Move2Point(math::Vector2d DesiredPoint, math::Angle Desire
 }
 
 //----------- Planar Motion Control functions END --------------------
+GZ_REGISTER_MODEL_PLUGIN(ModelController)
+} // namespace gazebo
