@@ -127,22 +127,22 @@ void ModelController::SystemInitialization(physics::ModelPtr parent_model)
   this->jointWF = model->GetJoint("Front_wheel_hinge");
   this->jointCB = model->GetJoint("Center_hinge");
   // Joint plus initialization
-  jointWRP.JointX = jointWR;
-  jointWRP.Need2BeSet = false;
-  jointWRP.JointErrorHis = 0;
-  jointWRP.JointErrorAccu = 0;
-  jointWLP.JointX = jointWL;
-  jointWLP.Need2BeSet = false;
-  jointWLP.JointErrorHis = 0;
-  jointWLP.JointErrorAccu = 0;
-  jointWFP.JointX = jointWF;
-  jointWFP.Need2BeSet = false;
-  jointWFP.JointErrorHis = 0;
-  jointWFP.JointErrorAccu = 0;
-  jointCBP.JointX = jointCB;
-  jointCBP.Need2BeSet = false;
-  jointCBP.JointErrorHis = 0;
-  jointCBP.JointErrorAccu = 0;
+  jointWRP.jointPtr = jointWR;
+  jointWRP.needToBeSet = false;
+  jointWRP.jointErrorHis = 0;
+  jointWRP.jointErrorAccu = 0;
+  jointWLP.jointPtr = jointWL;
+  jointWLP.needToBeSet = false;
+  jointWLP.jointErrorHis = 0;
+  jointWLP.jointErrorAccu = 0;
+  jointWFP.jointPtr = jointWF;
+  jointWFP.needToBeSet = false;
+  jointWFP.jointErrorHis = 0;
+  jointWFP.jointErrorAccu = 0;
+  jointCBP.jointPtr = jointCB;
+  jointCBP.needToBeSet = false;
+  jointCBP.jointErrorHis = 0;
+  jointCBP.jointErrorAccu = 0;
   // Setting the model states through sdf elements
   // Setting the maximium torque of the two wheels
   this->jointWR->SetMaxForce(
@@ -334,18 +334,18 @@ void ModelController::JointPIDController(double angle_desired_radian,
   double speed = 0;
   int rot_axis = 0;
   math::Angle angle_desired(angle_desired_radian);
-  angle_error = (angle_desired - current_joint->JointAngleNow).Radian();
-  angle_diff_error = angle_error - current_joint->JointErrorHis;
-  current_joint->JointErrorAccu += angle_error;
+  angle_error = (angle_desired - current_joint->jointAngleNow).Radian();
+  angle_diff_error = angle_error - current_joint->jointErrorHis;
+  current_joint->jointErrorAccu += angle_error;
   speed = jointAngleKPID.x*angle_error 
-      + jointAngleKPID.y*current_joint->JointErrorAccu 
+      + jointAngleKPID.y*current_joint->jointErrorAccu 
       + jointAngleKPID.z*angle_diff_error;
   if (abs(speed)> maxiRotationRate*desire_speed){
     speed = 
         speed>0?maxiRotationRate*desire_speed:(-maxiRotationRate*desire_speed);
   }
-  SetJointSpeed(current_joint->JointX,rot_axis,speed);
-  current_joint->JointErrorHis = angle_error;
+  SetJointSpeed(current_joint->jointPtr,rot_axis,speed);
+  current_joint->jointErrorHis = angle_error;
 } // ModelController::JointPIDController
 void ModelController::JointPIDController(double angle_desired_radian, 
     JointPlus *current_joint)
@@ -354,10 +354,10 @@ void ModelController::JointPIDController(double angle_desired_radian,
 } // ModelController::JointPIDController
 void ModelController::JointAngleUpdateInJointPlus(void)
 {
-  jointWRP.JointAngleNow = GetJointAngle(jointWR,0);
-  jointWLP.JointAngleNow = GetJointAngle(jointWL,0);
-  jointWFP.JointAngleNow = GetJointAngle(jointWF,0);
-  jointCBP.JointAngleNow = GetJointAngle(jointCB,0);
+  jointWRP.jointAngleNow = GetJointAngle(jointWR,0);
+  jointWLP.jointAngleNow = GetJointAngle(jointWL,0);
+  jointWFP.jointAngleNow = GetJointAngle(jointWF,0);
+  jointCBP.jointAngleNow = GetJointAngle(jointCB,0);
 } // ModelController::JointAngleUpdateInJointPlus
 void ModelController::SetJointSpeed(physics::JointPtr current_joint, 
     int rot_axis, double speed_desired)

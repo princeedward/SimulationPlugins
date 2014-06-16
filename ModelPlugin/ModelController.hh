@@ -24,7 +24,7 @@
 #include "JointPlus.hh"
 
 #define PI 3.1415926
-#define EXECUTIONERROR 0.015
+#define EXECUTIONERROR 0.08
 
 using std::vector;
 using std::string;
