@@ -52,26 +52,27 @@ class ModelController : public ModelPlugin
   //+  Useful functions to get model status and other tool functions  +
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   /// This function is used to calculate the angular velocity of a revolute joint
-  double RevolutionSpeedCal(physics::JointPtr JointNTBC, const int AxisIndex);
+  double RevolutionSpeedCal(physics::JointPtr joint, const int axis_index);
   /// This function is used to get the coordinates and direction of the current model
   math::Pose GetModelCentralCoor(void);
   /// This function is used to calculate the angle in the world frame 
   /// of two points in the world frame
   /// It is useful when moving object on a specific surface
-  math::Angle AngleCalculation2Points(math::Vector2d StartPoint, 
-      math::Vector2d EndPoint);
-  /// This function is used to apply a complementary filter
-  /// With a default factor of 0.9
-  double ComplementaryFilter(double FilteringValue);
+  math::Angle AngleCalculation2Points(math::Vector2d start_point, 
+      math::Vector2d end_point);
   /// This function is used to apply a complementary filter
   /// Without any default factors
-  double ComplementaryFilter(double FilteringValue, double ComplementFilterPar);
+  double ComplementaryFilter(double filtering_value, 
+      double complement_filter_par, double *value_history);
+  /// This function is used to apply a complementary filter
+  /// With a default factor of 0.9
+  double ComplementaryFilter(double filtering_value, double *value_history);
   /// This function is used to return the JointPlus structure according to the node ID
   JointPlus & GetJointPlus(int node_ID);
   /// This function is used to return the index of joint axis according to the node ID
   int GetJointAxis(int node_ID);
   /// This function will return the angle of the specified joint
-  math::Angle GetJointAngle(physics::JointPtr CurrentJoint, int RotAxis);
+  math::Angle GetJointAngle(physics::JointPtr current_joint, int rot_axis);
 
  private:
   /// Callback function when model plugin has been loaded
@@ -79,7 +80,7 @@ class ModelController : public ModelPlugin
   /// Callback when receive welcome informaation from world plugin
   void WelcomInfoProcessor(GzStringPtr &msg);
   /// Plugin initialization function
-  void SystemInitialization(physics::ModelPtr parentModel);
+  void SystemInitialization(physics::ModelPtr parent_model);
   /// Callback that runs in every 0.001s of simulation.
   void OnSystemRunning(const common::UpdateInfo & /*_info*/);
   /// Collision Topics Publisher and Subscriber initialization
@@ -87,7 +88,7 @@ class ModelController : public ModelPlugin
   void CollisionPubAndSubInitialization(void);
   /// Callback that decode collision information and populate it to world plugin
   /// Used by magnetic connection
-  void CollisionReceiverProcessor(GzStringPtr &msg);
+  void CollisionReceivingCallback(GzStringPtr &msg);
   /// Callback that decode commands from world plugin and execute them
   void CommandDecoding(CommandMessagePtr &msg);
 
@@ -96,13 +97,14 @@ class ModelController : public ModelPlugin
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   /// This function force to set joint to a specific angle
   /// Only used in simulation
-  void SetJointAngleForce(physics::JointPtr CurrentJoint, int RotAxis, 
-      math::Angle AngleDesired);
+  void SetJointAngleForce(physics::JointPtr current_joint, int rot_axis, 
+      math::Angle angle_desired);
   /// This function is the actuall joint control function used now
   /// This function apply a PID controller to control the joint speed 
   /// and to achieve the specified angle
-  void JointPIDController(JointPlus &CurrentJoint, double AngleDesiredRad, 
-      double DesireSpeed=0.8);
+  void JointPIDController(double angle_desired_radian, 
+      double desire_speed, JointPlus *current_joint);
+  void JointPIDController(double angle_desired_radian, JointPlus *current_joint);
   /// Joint Plus member update function
   void JointAngleUpdateInJointPlus(void);
   /// This function will set the rotation rate of the joint
@@ -121,8 +123,8 @@ class ModelController : public ModelPlugin
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   /// This function is used to control the planar motion orientation 
   /// of SMORES on the ground
-  void AnglePIDController(math::Angle DesiredAngle, math::Angle CurrentAngle, 
-      math::Vector2d CurrentSpeed);
+  void AnglePIDController(math::Angle desired_angle, math::Angle current_angle, 
+      math::Vector2d current_speed);
   /// This function is used to control the model drive to a specific point 
   /// on the ground plane
   void Move2Point(math::Vector2d DesiredPoint, math::Angle DesiredOrientation);
@@ -131,17 +133,17 @@ class ModelController : public ModelPlugin
   //+                       Model Pramaters                           +
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   // Default Joint Angle PID controller parameter
-  math::Vector3 JointAngleKPID;   // First digit is Kp, 
+  math::Vector3 jointAngleKPID;   // First digit is Kp, 
                                   // second digit is Ki and 
                                   // third digit is Kd
   // Default Joint Angle PID controller parameter
-  math::Vector3 ModelAngleKPID;   // First digit is Kp,
+  math::Vector3 modelAngleKPID;   // First digit is Kp,
                                   // second digit is Ki and
                                   // third digit is Kd
-  double MaxiRotationRate;  // Maximium rotation rate of each joint
-  double AccelerationRate;
-  double PlanarMotionStopThreshold;
-  double WheelRadius;
+  double maxiRotationRate;  // Maximium rotation rate of each joint
+  double accelerationRate;
+  double planarMotionStopThreshold;
+  double wheelRadius;
  private: 
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //+       Pointers of Model and joints and a emhanced struct        +
