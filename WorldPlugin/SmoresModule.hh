@@ -11,26 +11,41 @@ using namespace std;
 using namespace gazebo;
 
 typedef boost::shared_ptr<command_message::msgs::CommandMessage> CommandPtr;
-struct SpecialCommand
+class SpecialCommand
 {
+public:
 	// CommandType: 0 no special command; 1 connect; 2 disconnect
 	int CommandType;
 	string Module1;
 	string Module2;
 	int Node1;
 	int Node2;
+	SpecialCommand(int commandtype, string modelname1, string modelname2, int node1, int node2);
+	SpecialCommand(int commandtype);
 	SpecialCommand();
 };
-struct CommandPro 	// abbr for Command protocol
+class CommandPro 	// abbr for Command protocol
 {
+public:
 	CommandPtr ActualCommandMessage;
+	bool TimeBased;
 	unsigned int TimeInterval;	// Millisecond
-	int CommandGroup;		// Maximum length: 5000
+	// int CommandGroup;		// Maximum length: 5000
 	// unsigned int FinishTimeReccorderMS;
 	// unsigned int FinishTimeReccorderS;
+	bool ConditionCommand;
+	string ConditionID;
+	bool ConditionOnOtherCommand;
+	string Dependency;
 	bool SpecialCommandFlag;
 	SpecialCommand Command;
 	CommandPro();
+	CommandPro(CommandPtr command);
+	CommandPro(CommandPtr command, unsigned int timer);
+	void SetTimer(unsigned int timer);
+	void SetCondition(string condition);
+	void SetDependency(string dependency);
+	void SetSpecialCommand(SpecialCommand specialcommand);
 };
 
 class ModuleCommands
@@ -47,7 +62,7 @@ public:
   bool FinishedFlag;
   bool ReceivedFlag;
   bool ExecutionFlag;
-  int CurrentPriority;
+  // int CurrentPriority;
 };
 
 typedef boost::shared_ptr<ModuleCommands> ModuleCommandsPtr;
@@ -82,7 +97,7 @@ public: bool ModuleType; // Active module or Passive Module, true for active
 public: physics::ModelPtr ModuleObject;	// A pointer to the real module
 public: transport::PublisherPtr ModulePublisher;
 public: transport::SubscriberPtr ModuleSubscriber;
-public: ModuleCommandsPtr ModuleCommandContainer;
+public: ModuleCommandsPtr moduleCommandContainer;
 // Geometry information
 public: math::Pose ModulePosition;
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

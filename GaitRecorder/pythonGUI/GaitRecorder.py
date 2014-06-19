@@ -26,13 +26,15 @@ class App(Frame):
     self.parent = parent
     self.modelname = StringVar()
     self.othermodelname = StringVar()
+    self.node1 = StringVar()
+    self.node2 = StringVar()
     self.frontmode = IntVar()
     self.wheelmode = IntVar()
     self.front_angle = DoubleVar()
     self.left_angle = DoubleVar()
     self.right_angle = DoubleVar()
-    self.priority = IntVar()
-    self.group = IntVar()
+    self.condition = StringVar()
+    self.dependency = StringVar()
     self.elapstime = DoubleVar()
     self.savepath = StringVar()
     self.framename = StringVar()
@@ -42,6 +44,7 @@ class App(Frame):
     self.FrameList = []
     self.CurrentFrameRec = []
     self.CurrentFrameHis = []
+    self.DependencyList = []
     self.ModuleList = []
     self.currentgroup = 1
     # self.Newframe = True
@@ -50,7 +53,7 @@ class App(Frame):
     self.file_opt = options = {}
     # options['defaultextension'] = '.txt'
     options['filetypes'] = [('all files', '*'), ('text files', '.txt')]
-    options['initialdir'] = '~/'
+    options['initialdir'] = '/home/edward/'
     # options['initialfile'] = 'myfile.txt'
     options['parent'] = parent
     options['title'] = 'Open Configuration File'
@@ -98,6 +101,18 @@ class App(Frame):
     # self.name.bind('<<ComboboxSelected>>',self.UpdateJoint)
     self.other.place(x = 300, y = 5)
 
+    label14 = Label(f1, text='Node 1: ')
+    label14.place(x = 410, y = 5)
+    self.Node1 = ttk.Combobox(f1, textvariable=self.node1, width = 6) #, command = self.checkConnectivity
+    self.Node1['values'] = ('0','1','2','3')
+    self.Node1.place(x = 460, y = 5)
+
+    label15 = Label(f1, text='Node 2: ')
+    label15.place(x = 550, y = 5)
+    self.Node2 = ttk.Combobox(f1, textvariable=self.node2, width = 6) #, command = self.checkConnectivity
+    self.Node2['values'] = ('0','1','2','3')
+    self.Node2.place(x = 600, y = 5)
+
     #--------------- Joint Angle Modification -------------------
     JointModSec = ttk.Labelframe(f1, text='Joint Angle Update ', width = 450, height = 250)
     JointModSec.place(x = 10, y = 40)
@@ -112,61 +127,74 @@ class App(Frame):
     self.frontModA = Radiobutton(JointModSec, text='Angle (deg)', variable=self.frontmode, value=0, command = self.EnableFrontAngle)
     self.frontModS = Radiobutton(JointModSec, text='Speed (RPM)', variable=self.frontmode, value=1, command = self.EnableFrontSpeed)
     self.frontModA.select()
-    self.frontModA.place(x= 220, y = 40,anchor = CENTER)
-    self.frontModS.place(x= 220, y = 80,anchor = CENTER)
-    self.frontangle = Entry(JointModSec, textvariable=self.front_angle, width = 18)
+    self.frontModA.place(x= 220, y = 60,anchor = CENTER)
+    self.frontModS.place(x= 220, y = 100,anchor = CENTER)
+    # self.frontangle = Entry(JointModSec, textvariable=self.front_angle, width = 18)
+    self.frontangle = Scale(JointModSec, from_=-180, to=180, orient=HORIZONTAL, length = 150, resolution = 1, command = self.DynamicUpdate)
     self.frontangle.place(x = 280, y = 30)
-    self.frontspeed = Scale(JointModSec, from_=-15, to=15, orient=HORIZONTAL,length = 150, resolution = 1, state = DISABLED)
-    self.frontspeed.place(x = 280, y = 50)
+    self.frontspeed = Scale(JointModSec, from_=-15, to=15, orient=HORIZONTAL, length = 150, resolution = 1, state = DISABLED)
+    self.frontspeed.place(x = 280, y = 70)
     label4 = Label(JointModSec, text='Wheels: ')
-    label4.place(x = 10, y = 110)
+    label4.place(x = 10, y = 120)
     label5 = Label(JointModSec, text='Left ')
-    label5.place(x = 150, y = 110)
+    label5.place(x = 150, y = 120)
     label6 = Label(JointModSec, text='Right ')
-    label6.place(x = 300, y = 110)
+    label6.place(x = 300, y = 120)
     self.WheelModA = Radiobutton(JointModSec, text='Angle (deg)', variable=self.wheelmode, value=0, command = self.EnableWheelAngle)
     self.WheelModS = Radiobutton(JointModSec, text='Speed (RPM)', variable=self.wheelmode, value=1, command = self.EnableWheelSpeed)
     self.WheelModA.select()
-    self.WheelModA.place(x= 10, y = 140)
-    self.WheelModS.place(x= 10, y = 180)
+    self.WheelModA.place(x= 10, y = 150)
+    self.WheelModS.place(x= 10, y = 190)
     self.leftangle = Entry(JointModSec, textvariable=self.left_angle, width = 15)
-    self.leftangle.place(x = 120, y = 140)
+    self.leftangle.place(x = 120, y = 150)
     self.leftspeed = Scale(JointModSec, from_=-15, to=15, orient=HORIZONTAL,length = 120, resolution = 1, state = DISABLED)
-    self.leftspeed.place(x = 120, y = 160)
+    self.leftspeed.place(x = 120, y = 170)
     self.rightangle = Entry(JointModSec, textvariable=self.right_angle, width = 15)
-    self.rightangle.place(x = 280, y = 140)
+    self.rightangle.place(x = 280, y = 150)
     self.rightspeed = Scale(JointModSec, from_=-15, to=15, orient=HORIZONTAL,length = 120, resolution = 1, state = DISABLED)
-    self.rightspeed.place(x = 280, y = 160)
+    self.rightspeed.place(x = 280, y = 170)
 
     #---------------- Extra Information -------------------------
     ExtraInfoSec = ttk.Labelframe(f1, text='Extra Information ', width = 450, height = 90)
     ExtraInfoSec.place(x = 10, y = 300)
-    label7 = Label(ExtraInfoSec, text='Priority ')
+    label7 = Label(ExtraInfoSec, text='Condition ')
     label7.place(x = 10, y = 10)
-    Priority = Entry(ExtraInfoSec, textvariable=self.priority, width = 10)
-    Priority.place(x = 10, y = 35)
-    label8 = Label(ExtraInfoSec, text='Group ')
-    label8.place(x = 150, y = 10)
-    Group = Entry(ExtraInfoSec, textvariable=self.group, width = 10)
-    Group.place(x = 130, y = 35)
-    IncGroup = Button(ExtraInfoSec, text="+", command = self.GroupIncrease)
-    IncGroup.place(x = 220, y = 30)
+    Condition = Entry(ExtraInfoSec, textvariable=self.condition, width = 10)
+    # self.condition.set("1")
+    Condition.place(x = 10, y = 35)
+    label8 = Label(ExtraInfoSec, text='Depend on ')
+    label8.place(x = 120, y = 10)
+    # Group = Entry(ExtraInfoSec, textvariable=self.group, width = 10)
+    # Group.place(x = 130, y = 35)
+    # IncGroup = Button(ExtraInfoSec, text="+", command = self.GroupIncrease)
+    # IncGroup.place(x = 220, y = 30)
+    self.Dependency = ttk.Combobox(ExtraInfoSec, textvariable=self.dependency, width = 10) #, command = self.checkConnectivity
+    self.Dependency['values'] = ()
+    # self.Dependency.bind('<<ComboboxSelected>>',self.UpdateJoint)
+    self.Dependency.place(x = 110, y = 35)
+
     label9 = Label(ExtraInfoSec, text='Elapsed time ')
-    label9.place(x = 300, y = 10)
+    label9.place(x = 220, y = 10)
     ElapsTime = Entry(ExtraInfoSec, textvariable=self.elapstime, width = 10)
-    ElapsTime.place(x = 300, y = 35)
+    ElapsTime.place(x = 220, y = 35)
     label10 = Label(ExtraInfoSec, text='sec ')
-    label10.place(x = 390, y = 35)
+    label10.place(x = 310, y = 35)
+    #---------------- Disconnect --------------------------------
+    self.Disconnect = Button(ExtraInfoSec,text = "Disconnect", command = self.DisconnectSend, width = 8)
+    self.Disconnect.place(x = 340, y = 3)
+    #---------------- Connnect --------------------------------
+    self.Connect = Button(ExtraInfoSec,text = "Connect", command = self.ConnectSend, width = 8)  #, command = self.ConnectSend
+    self.Connect.place(x = 340, y = 38)
 
     #--------------- Command Records ---------------------------
     label11 = Label(f1, text='Command History in Current Frame ')
-    label11.place(x = 475, y = 20)
-    self.CommandRec = Listbox(f1, width=35, height=22,listvariable = self.commandlist) #listvariable = self.commandlist
+    label11.place(x = 475, y = 40)
+    self.CommandRec = Listbox(f1, width=35, height=21,listvariable = self.commandlist) #listvariable = self.commandlist
     # self.commandlist.set() 
     Commandscroller = Scrollbar(f1, command=self.CommandRec.yview)
     self.CommandRec.config(yscrollcommand=Commandscroller.set)
-    Commandscroller.place(x = 750, y = 40, height = 355)
-    self.CommandRec.place(x = 475, y = 40)
+    Commandscroller.place(x = 750, y = 60, height = 340)
+    self.CommandRec.place(x = 475, y = 60)
 
     #---------------- Command Record Update -------------------
     RecModify = Button(f1, text='Modify', command = self.CommandRecModify)
@@ -227,6 +255,10 @@ class App(Frame):
     Openfile = Button(f1, text = "Open Configuration", command = self.AskOpenFile)
     Openfile.place(x = window_width-Border_width-130, y = window_height-Border_hieht-5, anchor = SE)
 
+    #---------------- Open Existing Gait ---------------------------
+    OpenGait = Button(f1, text = "Open Gait File", command = self.OpenGaitFile)
+    OpenGait.place(x = window_width-Border_width-270, y = window_height-Border_hieht-5, anchor = SE)
+
     #---------------- Save Button --------------------------------
     self.saveButton = Button(f1, text="Save", command = self.SaveGaitTable, state = DISABLED)
     self.saveButton.place(x = window_width-Border_width-65, y = window_height-Border_hieht-5, anchor = SE)
@@ -245,10 +277,6 @@ class App(Frame):
     self.Addframe = Button(f1,text = "Save Frame", command = self.SaveFrame, state = DISABLED)
     self.Addframe.place(x = 285, y = window_height-Border_hieht-5, anchor = SW)
 
-    #---------------- Disconnect --------------------------------
-    self.Disconnect = Button(f1,text = "Disconnect", command = self.DisconnectSend, state = DISABLED)
-    self.Disconnect.place(x = 385, y = window_height-Border_hieht-5, anchor = SW)
-
     #----------------- Add Current Command ---------------------
     self.Addcommand = Button(f1,text = "Add Command", command = self.AddGaitTable, state = DISABLED)
     self.Addcommand.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
@@ -258,7 +286,8 @@ class App(Frame):
     self.quit()
 
   def AskOpenFile(self):
-    filename = tkFileDialog.askopenfilename(**self.file_opt)
+    # filename = tkFileDialog.askopenfilename(**self.file_opt)
+    filename = "/home/edward/.gazebo/models/SMORES8Jack/InitialConfiguration"
 
     # open file on your own
     if filename:
@@ -299,12 +328,12 @@ class App(Frame):
     modelname = self.modelname.get()
     moduleObj = self.GetModuleByName(modelname)
     self.Joint3.set(moduleObj.JointAngle[3]/np.pi*180)
-    self.front_angle.set(moduleObj.JointAngle[0]/np.pi*180)
+    self.frontangle.set(moduleObj.JointAngle[0]/np.pi*180)
     self.left_angle.set(moduleObj.JointAngle[1]/np.pi*180)
     self.right_angle.set(moduleObj.JointAngle[2]/np.pi*180)
-    self.group.set(moduleObj.Group)
+    # self.group.set(moduleObj.Group)
     self.elapstime.set(0.0)
-    self.currentgroup = moduleObj.Group
+    # self.currentgroup = moduleObj.Group
     self.Addcommand["state"] = NORMAL
     self.Disconnect["state"] = NORMAL
 
@@ -328,7 +357,7 @@ class App(Frame):
     joints = []
     jointsflags = []
     if self.frontmode.get() == 0:
-      joints.append(self.front_angle.get()/180.0*np.pi)
+      joints.append(self.frontangle.get()/180.0*np.pi)
       # moduleObj.JointAngle[0] = self.front_angle.get()/180.0*np.pi
       moduleObj.Speeds[0] = 0
       jointsflags.append(0)
@@ -357,10 +386,13 @@ class App(Frame):
     print "Joint angles", joints
     moduleObj.JointAngle = tuple(joints)
     currenttimer = int(self.elapstime.get()*1000)
-    groupinc = int(self.group.get()-self.currentgroup)
-    moduleObj.Group += groupinc
-    self.currentgroup = self.group.get()
-    newgaits = GaitEntry(module_id,joints,groupinc,currenttimer,jointsflags,self.currentgroup)
+
+    # self.currentgroup = self.group.get()
+    newgaits = GaitEntry(module_id,joints,currenttimer,self.dependency.get(),self.condition.get(),False,jointsflags)
+    if not self.condition.get() in self.DependencyList:
+      self.DependencyList.append(self.condition.get())
+      print "Dependency list: ",self.DependencyList
+    self.RefreshDependencyList()
     self.CurrentFrameRec.append(newgaits)
     self.RefreshGaitRecorder()
     self.saveButton["state"] = NORMAL
@@ -368,19 +400,44 @@ class App(Frame):
     self.Addframe["state"] = NORMAL
 
   def GaitObjToStr(self,gaittableobj):
-    if gaittableobj.ModuleName[0] == "-" or gaittableobj.ModuleName[0] == "+" :
+    if gaittableobj.SpecialEntry :
       gaitstr = gaittableobj.ModuleName
       return gaitstr
     else:
       gaitstr = ""
       gaitstr += gaittableobj.ModuleName+" "
       for i in xrange(4):
+        if i < 3:
+          if gaittableobj.AngleFlags[i] == 0:
+            gaitstr+= "p"
+          elif gaittableobj.AngleFlags[i] == 0:
+            gaitstr+= "s"
+        else:
+          gaitstr+= "p"
         gaitstr+= str(gaittableobj.Joints[i])+" "
-      gaitstr += str(gaittableobj.GroupIncr)+" "
-      gaitstr += str(gaittableobj.Timer)
+      if gaittableobj.Timer > 0:
+        gaitstr+= "["+str(gaittableobj.Timer)+"] "
+      if len(gaittableobj.condition_id) > 0 :
+        gaitstr+= "{"+gaittableobj.condition_id+"} "
+      if len(gaittableobj.dependency_id) > 0 :
+        gaitstr+= "("+gaittableobj.dependency_id+") "
+      gaitstr+=";"
       return gaitstr
 
   def SaveFrame(self):
+    framenum = len(self.FrameList)
+    while True:
+      if not "frame_"+str(framenum) in self.DependencyList:
+        break
+      else:
+        framenum += 1
+    # framenum -= 1
+    # for eachGait in self.CurrentFrameRec:
+    #   if eachGait.condition_id == "" :
+    #     eachGait.condition_id = "frame_"+str(framenum)
+    # self.DependencyList.append("frame_"+str(framenum))
+    self.RefreshDependencyList()
+    self.dependency.set("frame_"+str(framenum))
     self.FrameList.append(self.CurrentFrameRec)
     self.CurrentFrameRec = []
     self.RefreshGaitRecorder()
@@ -435,31 +492,57 @@ class App(Frame):
     newsinglegait = self.selectedcommand.get()
     self.GaiTableHisList[self.historyidx] = newsinglegait
     updatedgait = self.InterpretGaitString(newsinglegait)
-    self.CurrentFrameHis[self.historyidx].ModuleName = updatedgait.ModuleName
-    self.CurrentFrameHis[self.historyidx].Joints = updatedgait.Joints
-    self.CurrentFrameHis[self.historyidx].GroupIncr = updatedgait.GroupIncr
-    self.CurrentFrameHis[self.historyidx].Timer = updatedgait.Timer
+    self.CurrentFrameHis[self.historyidx] = updatedgait
+
     self.UpdateFrameWindows()
     self.saveButton["state"] = NORMAL
     self.saveButton2["state"] = NORMAL
 
   def InterpretGaitString(self,gaitstring):
-    if gaitstring[0] == "-" or gaitstring[0] == "+" :
-      return GaitEntry(gaitstring,[0,0,0,0],0,0)
+    if gaitstring[0] == "$" :
+      # return GaitEntry(gaitstring,[0,0,0,0],0)
+      if gaitstring.find("[") != -1:
+        timer = int(gaitstring[gaitstring.find("[")+1:gaitstring.find("]")])
+      else:
+        timer = 0
+      if gaitstring.find("{") != -1:
+        condition = gaitstring[gaitstring.find("{")+1:gaitstring.find("}")]
+      else:
+        condition = ""
+      if gaitstring.find("(") != -1:
+        dependency = gaitstring[gaitstring.find("(")+1:gaitstring.find(")")]
+      else:
+        dependency = ""
+
+      return GaitEntry(module_id = gaitstring,jointangles = [0,0,0,0],timer = 0,dependency = dependency, condition = condition,special = True)
     else:
       idx = gaitstring.find(" ")
       modelname = gaitstring[0:idx]
       gaitstring = gaitstring[idx+1:]
       joints = []
+      jointsflags = []
       for i in xrange(4):
         idx = gaitstring.find(" ")
-        joints.append(float(gaitstring[0:idx]))
+        if gaitstring[0] == "p":
+          jointsflags.append(0)
+        elif gaitstring[0] == "s" :
+          jointsflags.append(1)
+        joints.append(float(gaitstring[1:idx]))
         gaitstring = gaitstring[idx+1:]
-      idx = gaitstring.find(" ")
-      groupinc = int(gaitstring[0:idx])
-      gaitstring = gaitstring[idx+1:]
-      timer = int(gaitstring)
-      return GaitEntry(modelname,joints,groupinc,timer)
+
+      if gaitstring.find("[") != -1:
+        timer = int(gaitstring[gaitstring.find("[")+1:gaitstring.find("]")])
+      else:
+        timer = 0
+      if gaitstring.find("{") != -1:
+        condition = gaitstring[gaitstring.find("{")+1:gaitstring.find("}")]
+      else:
+        condition = ""
+      if gaitstring.find("(") != -1:
+        dependency = gaitstring[gaitstring.find("(")+1:gaitstring.find(")")]
+      else:
+        dependency = ""
+      return GaitEntry(modelname,joints,timer,dependency,condition,False,jointsflags[0:3])
 
   def DeleteSingleGait(self):
     del self.GaiTableHisList[self.historyidx]
@@ -491,17 +574,17 @@ class App(Frame):
       # self.front_angle.set(gaitentryobj.Joints[0]/np.pi*180)
       # self.left_angle.set(gaitentryobj.Joints[1]/np.pi*180)
       # self.right_angle.set(gaitentryobj.Joints[2]/np.pi*180)
-      self.group.set(gaitentryobj.Group)
+      # self.group.set(gaitentryobj.Group)
       self.elapstime.set(gaitentryobj.Timer/1000.0)
-      self.currentgroup = gaitentryobj.Group
+      # self.currentgroup = gaitentryobj.Group
       self.modelname.set(gaitentryobj.ModuleName)
       if gaitentryobj.AngleFlags[0] == 0:
         self.frontModA.select()
-        self.front_angle.set(gaitentryobj.Joints[0]/np.pi*180)
+        self.frontangle.set(gaitentryobj.Joints[0]/np.pi*180)
         self.frontspeed.set(0)
       else:
         self.frontspeed.set(gaitentryobj.Joints[0])
-        self.front_angle.set(0)
+        self.frontangle.set(0)
         self.frontModS.select()
       if gaitentryobj.AngleFlags[1] == 0:
         self.WheelModA.select()
@@ -530,7 +613,7 @@ class App(Frame):
       gaitentryobj.Joints[3] = self.Joint3.get()/180.0*np.pi
       if self.frontmode.get() == 0 :
         gaitentryobj.AngleFlags[0] = 0
-        gaitentryobj.Joints[0] = self.front_angle.get()/180.0*np.pi
+        gaitentryobj.Joints[0] = self.frontangle.get()/180.0*np.pi
       else:
         gaitentryobj.AngleFlags[0] = 1
         gaitentryobj.Joints[0] = self.frontspeed.get()
@@ -544,8 +627,8 @@ class App(Frame):
         gaitentryobj.AngleFlags[2] = 1
         gaitentryobj.Joints[1] = self.leftspeed.get()
         gaitentryobj.Joints[2] = self.rightspeed.get()
-      gaitentryobj.GroupIncr = self.group.get() - gaitentryobj.Group + gaitentryobj.GroupIncr
-      gaitentryobj.Group = self.group.get()
+      # gaitentryobj.GroupIncr = self.group.get() - gaitentryobj.Group + gaitentryobj.GroupIncr
+      # gaitentryobj.Group = self.group.get()
       gaitentryobj.Timer = int(self.elapstime.get()*1000)
     self.RefreshGaitRecorder()
 
@@ -566,7 +649,10 @@ class App(Frame):
       #   self.PublishMessage(eachgait,True)
       #   # self.Newframe = False
       # else:
-      self.PublishMessage(eachgait,True)
+      if not eachgait.SpecialEntry:
+        self.PublishMessage(eachgait,True)
+      else:
+        self.PublishMessageSpecial(eachgait,True)
     # self.Playframe["state"] = DISABLED
     print "All information published"
 
@@ -577,10 +663,32 @@ class App(Frame):
     newmessage.PlayStatus = playstate
     for i in xrange(4):
       newmessage.JointAngles.append(eachgaittable.Joints[i])
+    # print newmessage.ModelName,":",newmessage.JointAngles
     newmessage.Timer = eachgaittable.Timer
-    newmessage.GroupIncr = eachgaittable.GroupIncr
+    newmessage.Condition = eachgaittable.condition_id
+    newmessage.Dependency = eachgaittable.dependency_id
     for i in xrange(3):
       newmessage.Flags.append(eachgaittable.AngleFlags[i])
+    # print "Listeners are ",self.publisher.showlisteners()
+    # self.newconnection.sendData(newmessage)
+    # self.publisher.publish(newmessage)
+    self.communicator.publish(newmessage)
+    # eventlet.sleep(1.0)
+    print "Information published"
+
+  def PublishMessageSpecial(self,eachgaittable,playstate):
+    newmessage = GaitRecMessage()
+    newmessage.ModelName = eachgaittable.ModuleName
+    newmessage.NewFrame = False # self.Newframe
+    newmessage.PlayStatus = playstate
+    # for i in xrange(4):
+    #   newmessage.JointAngles.append(eachgaittable.Joints[i])
+    newmessage.Timer = eachgaittable.Timer
+    newmessage.Condition = eachgaittable.condition_id
+    newmessage.Dependency = eachgaittable.dependency_id
+    newmessage.ExtrInfo = eachgaittable.ModuleName
+    # for i in xrange(3):
+    #   newmessage.Flags.append(eachgaittable.AngleFlags[i])
     # print "Listeners are ",self.publisher.showlisteners()
     # self.newconnection.sendData(newmessage)
     # self.publisher.publish(newmessage)
@@ -604,7 +712,7 @@ class App(Frame):
       newmessage.ModelName = self.modelname.get()
       newmessage.NewFrame = False
       newmessage.PlayStatus = False
-      jointangles = [self.front_angle.get()/180.0*np.pi, self.left_angle.get()/180.0*np.pi, self.right_angle.get()/180.0*np.pi, self.Joint3.get()/180.0*np.pi]
+      jointangles = [self.frontangle.get()/180.0*np.pi, self.left_angle.get()/180.0*np.pi, self.right_angle.get()/180.0*np.pi, self.Joint3.get()/180.0*np.pi]
       for i in xrange(4):
         newmessage.JointAngles.append(jointangles[i])
       self.communicator.publish(newmessage)
@@ -620,6 +728,8 @@ class App(Frame):
     for eachframe in self.FrameList:
       for eachentry in eachframe:
         GaitStringList.append(self.GaitObjToStr(eachentry)+'\n')
+    for eachentry in self.CurrentFrameRec:
+      GaitStringList.append(self.GaitObjToStr(eachentry)+'\n')
     f.writelines(GaitStringList)
     f.close()
     print "Gait saved"
@@ -639,12 +749,69 @@ class App(Frame):
     newmessage.NewFrame = False
     newmessage.PlayStatus = True
     if len(self.othermodelname.get())>0:
-      newmessage.ExtrInfo = "- "+self.modelname.get()+" "+self.othermodelname.get()+" 1 1"
+      newmessage.ExtrInfo = "$ - &"+self.modelname.get()+" &"+self.othermodelname.get()
     else:
-      newmessage.ExtrInfo = "- "+self.modelname.get()+" "+"X"+" 1 1"
+      newmessage.ExtrInfo = "$ - &"+self.modelname.get()+" "+"&X"
+    if self.elapstime.get() != 0 :
+      newmessage.ExtrInfo += " [" + str(int(self.elapstime.get()*1000)) +"]"
+    if self.condition.get() != "" :
+      newmessage.ExtrInfo += " {" + self.condition.get() +"}"
+    if self.dependency.get() != "" :
+      newmessage.ExtrInfo += " (" + self.dependency.get() +")"
+    newmessage.ExtrInfo += " ;"
     self.communicator.publish(newmessage)
-    newgaits = GaitEntry(newmessage.ExtrInfo,[0,0,0,0],0,0)
+    newgaits = GaitEntry(newmessage.ExtrInfo,[0,0,0,0],self.elapstime.get(),self.dependency.get(),self.condition.get())
+    newgaits.SpecialEntry = True
     self.CurrentFrameRec.append(newgaits)
+    self.RefreshGaitRecorder()
+    self.saveButton["state"] = NORMAL
+    self.saveButton2["state"] = NORMAL
+    self.Addframe["state"] = NORMAL
+
+  def ConnectSend(self):
+    if len(self.modelname.get())>0 and len(self.othermodelname.get())>0 and len(self.node1.get())>0 and len(self.node2.get())>0:
+      newmessage = GaitRecMessage()
+      newmessage.ModelName = "Module_0"
+      newmessage.NewFrame = False
+      newmessage.PlayStatus = True
+      newmessage.ExtrInfo = "$ + &"+self.modelname.get()+" #"+self.node1.get()+" &"+self.othermodelname.get()+" #"+self.node2.get()
+      if self.elapstime.get() != 0 :
+        newmessage.ExtrInfo += " [" + str(int(self.elapstime.get()*1000)) +"]"
+      if self.condition.get() != "" :
+        newmessage.ExtrInfo += " {" + self.condition.get() +"}"
+      if self.dependency.get() != "" :
+        newmessage.ExtrInfo += " (" + self.dependency.get() +")"
+      newmessage.ExtrInfo += " ;"
+      self.communicator.publish(newmessage)
+      newgaits = GaitEntry(newmessage.ExtrInfo,[0,0,0,0],self.elapstime.get(),self.dependency.get(),self.condition.get())
+      newgaits.SpecialEntry = True
+      self.CurrentFrameRec.append(newgaits)
+      self.RefreshGaitRecorder()
+      self.saveButton["state"] = NORMAL
+      self.saveButton2["state"] = NORMAL
+      self.Addframe["state"] = NORMAL
+
+  def RefreshDependencyList(self):
+    self.Dependency['values'] = tuple(self.DependencyList)
+
+  def OpenGaitFile(self):
+    # filename = tkFileDialog.askopenfilename(**self.file_opt)
+    # print filename
+    filename = "/home/edward/Simulation Plugins/GaitRecorder/pythonGUI/Commands"
+    gaitfile = open(filename, 'r')
+    # print gaitfile.readlines()
+    for eachlines in gaitfile.readlines():
+      # print eachlines[0:-1]
+      newgait = self.InterpretGaitString(eachlines[0:-1])
+      if not newgait.SpecialEntry:
+        themodule = self.GetModuleByName(newgait.ModuleName)
+        themodule.JointAngle = tuple(newgait.Joints)
+      newcondition = newgait.condition_id
+      if not newcondition in self.DependencyList:
+        self.DependencyList.append(newcondition)
+      self.CurrentFrameRec.append(newgait)
+      # print "Dependency list: ",self.DependencyList
+    self.RefreshDependencyList()
     self.RefreshGaitRecorder()
     self.saveButton["state"] = NORMAL
     self.saveButton2["state"] = NORMAL

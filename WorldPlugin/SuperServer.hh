@@ -1,238 +1,285 @@
 #ifndef _GAZEBO_SUPER_SERVER_HH_
 #define _GAZEBO_SUPER_SERVER_HH_
 
-#include <sdf/sdf.hh>
+#include <stdlib.h>
+
+#include <string>
+#include <iostream>
+#include <cmath>
+#include <algorithm>
+#include <fstream>
 #include <boost/bind.hpp>
+#include <queue>
+
+#include <sdf/sdf.hh>
 #include "gazebo/gazebo.hh"
 #include "gazebo/common/common.hh"
 #include "gazebo/transport/transport.hh"
 #include "gazebo/physics/physics.hh"
 #include "gazebo/msgs/msgs.hh"
-#include <string>
-#include <stdlib.h>
-#include <iostream>
-#include <cmath>
-#include <algorithm>
-#include <fstream>
 // Libraries for messages needed to use to communicate between plugins
 #include "collision_message_plus.pb.h"
-// #include "command_message.pb.h"
-// Libraries for connectivity representation
-#include "SmoresModule.hh"
-// XML paser library
+#include "command_message.pb.h"
+// XML paser libraries
 #include "rapidxml.hpp"
 #include "rapidxml_utils.hpp"
-
+// Libraries for connectivity representation
+#include "SmoresModule.hh"
+// Other useful classes for storing information
+#include "CollisionInformation.hh"
+#include "Condition.hh"
+// Library for colored log text
+#include "ColorLog.hh"
+// Libraries for configuration motion feedback control
 #include "LibraryTemplate.hh"
 
 #define PI 3.141593   // 3.1411593
 #define VALIDCONNECTIONDISUPPER 0.110
 #define VALIDCONNECTIONDISLOWER 0.098
-#define MODULEPATH "SMORE.sdf"  // Depende on current execution folder, I think
+// TODO: tests needed to make sure it depende on current execution folder
+#define MODULEPATH "SMORE.sdf"
 #define INTIALCONFIGURATION "InitialConfiguration"
 
-using namespace std;
-using namespace rapidxml;
+using std::string;
+using std::vector;
 
+typedef const boost::shared_ptr
+    <const collision_message_plus::msgs::CollisionMessage> CollisionMessagePtr;
+typedef const boost::shared_ptr
+    <const command_message::msgs::CommandMessage> CommandMessagePtr;
+typedef boost::shared_ptr<gazebo::Condition> ConditionPtr;
+
+// TODO: Considering 
+namespace {
+inline string Int2String(int number)
+{
+  stringstream ss; //create a stringstream
+  ss << number;    //add number to the stream
+  return ss.str(); //return a string with the contents of the stream
+} // Int2String
+} // namespace 
 namespace gazebo
 {
-	typedef const boost::shared_ptr<const collision_message_plus::msgs::CollisionMessage> CollisionMessagePtr;
-  typedef const boost::shared_ptr<const command_message::msgs::CommandMessage> CommandMessagePtr;
+class ControlCenter : public WorldPlugin
+{
+ public:
+  ControlCenter();
+  ~ControlCenter();
+  /// This function will be called in Load() to perform extra initialization
+  virtual void ExtraInitializationInLoad(physics::WorldPtr _parent, 
+      sdf::ElementPtr _sdf);
+  /// Load a shared library in linux
+  LibraryTemplate *DynamicallyLoadedLibrary(const char* library_path, 
+      void *lib_handle);
+  /// Close the loaded libraries
+  void CloseLoadedLibrary(void *lib_handle);
+  virtual void OnSystemRunningExtra(const common::UpdateInfo & _info);
+  /// Insert a model to the current world
+  void InsertModel(string name, math::Pose position);
+  /// Insert a model to the current world, with joint angles specified
+  void InsertModel(string name, math::Pose position, string joint_angles);
+  /// This function is used to build a configuration using a XML file
+  void BuildConfigurationFromXML(string file_name);
+  /// This function is used to build connection using a XML file
+  void BuildConnectionFromXML(string file_name);
+  /// This function will be called after set the model initial position
+  virtual void ExtraWorkWhenModelInserted(CommandMessagePtr &msg);
+  /// Convert angles so that their absolutely value always smaller than Pi 
+  double ConversionForAngleOverPi(double angle);
+  /// Enable auto magnetic connection, all module
+  /// Have to be called in Load()
+  /// Default: disabled
+  void EnableAutoMagneticConnection(void);
+  //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // These functions are used to connect or deconnect modules
+  //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  /// Connect two modules by pointers and node_ID
+  void PassiveConnect(SmoresModulePtr module_1, SmoresModulePtr module_2, 
+      int node1_ID, int node2_ID, double node_angle, double node_distance);
+  /// With default angle and distance offset equal to 0
+  void PassiveConnect(SmoresModulePtr module_1, SmoresModulePtr module_2, 
+      int node1_ID, int node2_ID);
+  /// TODO: Need add 'active' feature to this function
+  void ActiveConnect(SmoresModulePtr module_1, SmoresModulePtr module_2, 
+      int node1_ID, int node2_ID, double node_angle, double node_distance);
+  /// With default angle and distance offset equal to 0
+  void ActiveConnect(SmoresModulePtr module_1, SmoresModulePtr module_2, 
+      int node1_ID, int node2_ID);
+  /// Disconnect two modules on one edge
+  /// TODO: This pointer must point to an element in the vector
+  void Disconnect(SmoresEdgePtr aEdge);
+  /// Disconnect two module base on one module and one node of that module
+  void Disconnect(SmoresModulePtr aModule, int node_ID);
+  /// Disconnect two module base on one module and one node of that module
+  void Disconnect(string moduleName, int node_ID);
+  /// Disconnect two module base on their names
+  void Disconnect(string moduleName1, string moduleName2);
 
-  class CollisionInformation
-  {
-  //++++++++++++++ Class Methods +++++++++++++++++++++++++++++++++
-  public:
-    CollisionInformation(string collision1, string collision2, string link_collision1, string link_collision2);
+  /// Theses functions are used to send 'gait table'
+  /// TODO: Think about how to combine these functions
+  void SendGaitTable(SmoresModulePtr module, const bool *flag, 
+      const double *gait_value, int msg_type, unsigned int time_stamp, 
+      string condition_str, string dependency_str);
+  void SendGaitTable(SmoresModulePtr module, const bool *flag, 
+      const double *gait_value, int msg_type, unsigned int time_stamp);
+  void SendGaitTable(SmoresModulePtr module, const bool *flag, 
+      const double *gait_value, int msg_type, 
+      string condition_str, string dependency_str);
+  void SendGaitTable(SmoresModulePtr module, const bool *flag, 
+      const double *gait_value, int msg_type);
+  void SendGaitTable(SmoresModulePtr module, int joint_ID, 
+      double gait_value, int msg_type, unsigned int time_stamp, 
+      string condition_str, string dependency_str);
+  void SendGaitTable(SmoresModulePtr module, int joint_ID, 
+      double gait_value, int msg_type, unsigned int time_stamp);
+  void SendGaitTable(SmoresModulePtr module, int joint_ID, 
+      double gait_value, int msg_type, 
+      string condition_str, string dependency_str);
+  void SendGaitTable(SmoresModulePtr module, int joint_ID, 
+      double gait_value, int msg_type);
+  void SendGaitTable(SmoresModulePtr module, string module1, string module2, 
+      int node1, int node2, int commandtype, unsigned int time_stamp, 
+      string condition_str, string dependency_str);
+  void SendGaitTable(SmoresModulePtr module, string module1, string module2, 
+      int node1, int node2, int commandtype, unsigned int time_stamp);
+  void SendGaitTable(SmoresModulePtr module, string module1, string module2, 
+      int node1, int node2, int commandtype, 
+      string condition_str, string dependency_str);
+  void SendGaitTable(SmoresModulePtr module, string module1, string module2, 
+      int node1, int node2, int commandtype);
+  // void SendPosition(SmoresModulePtr module, double x, double y, 
+  //    double orientation_angle, int group, unsigned int time_stamp int priority);
+  /// These two functions can only be used in the direct driving situation
+  void SendGaitTableInstance(SmoresModulePtr module, const bool *flag, 
+      const double *gait_value, int msg_type);
+  void SendGaitTableInstance(SmoresModulePtr module, const bool *flag, 
+      const double *gait_value);
+  void SendPositionInstance(SmoresModulePtr module, double x, double y, 
+      double orientation_angle);
+  /// Erase all the existing commands of a specific module
+  /// TODO: Need to be tested
+  void EraseComaands(SmoresModulePtr module);
 
-    bool SameCollision(string collision1, string collision2, string link_collision1, string link_collision2);
-    
-  //++++++++++++++ Class Members +++++++++++++++++++++++++++++++++
-  public:
-    string Model1;
-    string Model2;
-    string LinkOfModel1;
-    string LinkofModel2;
-  };
+  //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // These functions are utility functions
+  //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  int GetNodeIDByName(string node_name);
+  SmoresModulePtr GetModulePtrByName(string module_name);
+  void EraseCommandPtrByModule(SmoresModulePtr module_ptr);
+  int GetModuleIndexByName(string module_name);
+  /// Check whether two nodes are connected together
+  bool AlreadyConnected(SmoresModulePtr module_1, SmoresModulePtr module_2, 
+      int node1_ID, int node2_ID);
+  /// Check whether two modules have already connected on a node
+  bool AlreadyConnected(SmoresModulePtr module_1, SmoresModulePtr module_2);
+  /// Check whether a node a of module has been occupied
+  bool AlreadyConnected(SmoresModulePtr module, int node_ID);
+  void ReadFileAndGenerateCommands(const char* fileName);
+  void InterpretCommonGaitString(string a_command_str);
+  void InterpretSpecialString(string a_command_str);
+  /// Count how many modules are there in a cluster
+  unsigned int CountModules(SmoresModulePtr module);
 
-  class ControlCenter : public WorldPlugin
-  {
-    public: ControlCenter();
+ private: 
+  void Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf);
+  /// Callback when there is an entity added to the world
+  void AddEntityToWorld(std::string & _info);
+  /// This function will be called in the every iteration of the simulation
+  void OnSystemRunning(const common::UpdateInfo & /*_info*/);
+  /// Command information receiving callback
+  void FeedBackMessageDecoding(CommandMessagePtr &msg);
+  /// Collision information receiving callback
+  /// Used by automatic magnetic connection
+  /// TODO: Need to be enabled by each individual module
+  void AutomaticMagneticConnectionManagement(CollisionMessagePtr &msg);
+  /// The function is used to physically connect different models 
+  /// by generating dynamic joint
+  void ConnectAndDynamicJointGeneration(SmoresModulePtr module_1, 
+      SmoresModulePtr module_2, int node1_ID, int node2_ID, SmoresEdgePtr an_edge);
+  /// Calculate the rotation matrix of cluster 2
+  /// Used in 'ConnectAndDynamicJointGeneration'
+  void RotationQuaternionCalculation(math::Vector3 normal_axis,
+    math::Vector3 z_axis_of_link1, math::Vector3 z_axis_of_link2, 
+    math::Vector3 first_rotation, math::Vector3 second_rotation,
+    math::Quaternion *first_rotation_of_link2, 
+    math::Quaternion *second_rotation_of_link2);
+  /// Calculate the new position of the connecting modules
+  void NewPositionCalculation(SmoresEdgePtr an_edge,
+    math::Pose old_pose_of_module1, math::Pose old_pose_of_module2, 
+    int node1_ID, int node2_ID, 
+    math::Pose *new_pose_of_module1, math::Pose *new_pose_of_module2);
+  /// Destroyer of the connection between different modules,
+  /// which is dynamic joint here
+  void DynamicJointDestroy(SmoresEdgePtr aEdge);
+  /// These functions are used to manage and send message to model
+  void CommandManager(void); 
+  void CommandExecution(ModuleCommandsPtr current_command_container);
+  /// Condition manipulation
+  void AddCondition(string conditionid);
+  void FinishOneConditionCommand(string conditionid);
+  bool CheckCondition(string conditionid);
 
-    public: void Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf);
-    
-    private: void addEntity2World(std::string & _info);
-    
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function will be called in the every iteration of the simulation
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void OnSystemRunning(const common::UpdateInfo & /*_info*/);
+// public: ModuleCommandsPtr GetCommandPtrByModule(SmoresModulePtr module_ptr)
+// {
+//   ModuleCommandsPtr command_squence;
+//   for (unsigned int i = 0; i < ModuleCommandContainer.size(); ++i)
+//   {
+//     if (module_ptr == ModuleCommandContainer.at(i)->WhichModule)
+//     {
+//       command_squence = ModuleCommandContainer.at(i);
+//       break;
+//     }
+//   }
+//   return command_squence;
+// }
 
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function is used to build initial configuration using a XML file
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void BuildConfigurationFromXML(void);
+// public: void SetThePointerInSmoresModule(void)
+// {
+//   if (NeedToSetPtr)
+//   {
+//     for (unsigned int i = 0; i < moduleList.size(); ++i)
+//     {
+//       moduleList.at(i)->SetModulePtr(currentWorld
+//          ->GetModel(moduleList.at(i)->ModuleID));
+//     }
+//     NeedToSetPtr = false;
+//     cout<<"World: Pointer has been assigned"<<endl;
+//   }
+// }
 
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function is used to build connection using a XML file
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void BuildConnectionFromXML(void);
-
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function will be called everytime receive command information
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void FeedBackMessageDecoding(CommandMessagePtr &msg);
-    
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function will be called everytime receive collision information
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void AutomaticMagneticConnectionManagement(CollisionMessagePtr &msg);
-
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // These function are used to physically connect different models by generating dynamic joint
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void ConnectAndDynamicJointGeneration(SmoresModulePtr module_1, SmoresModulePtr module_2, int node1_ID, int node2_ID, SmoresEdgePtr an_edge);
-    
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function is used to physically destroy the connection between different modules, which is dynamic joint here
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void DynamicJointDestroy(SmoresEdgePtr aEdge);
-    
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // This function is used to insert a model to the current world
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    public: void InsertModel(string name, math::Pose position);
-
-    public: void InsertModel(string name, math::Pose position, string joint_angles);
-
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // These functions are used to connect or deconnect modules
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // Connect two modules by pointers and node_ID
-    public: void PassiveConnection(SmoresModulePtr module_1, SmoresModulePtr module_2, int node1_ID, int node2_ID, double node_angle = 0, double node_distance = 0);
-
-    public: void ActiveConnection(SmoresModulePtr module_1, SmoresModulePtr module_2, int node1_ID, int node2_ID, double node_angle = 0, double node_distance = 0);
-
-    // Deconnect two modules on one edge
-    public: void Deconnection(SmoresEdgePtr aEdge);  // This pointer must point to an element in the vector
-    
-    // Deconnect two module base on one module and one node of that module
-    public: void Deconnection(SmoresModulePtr aModule, int node_ID);
-
-    // Deconnect two module base on one module and one node of that module
-    public: void Deconnection(string moduleName, int node_ID);
-
-    public: void Deconnection(string moduleName1, string moduleName2);
-
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // These functions are used to manage and send message to model
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    private: void CommandManager(void);
-    
-    public: void SendGaitTable(SmoresModulePtr module, bool flag[4], double gait_value[4], int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
- 
-    public: void SendGaitTable(SmoresModulePtr module, int joint_ID, double gait_value, int group = 0, unsigned int time_stamp = 0, int priority = 0, int msg_type = 3);
-
-    public: void SendGaitTable(SmoresModulePtr module, string module1, string module2, int node1, int node2, int commandtype, int group);
-
-    public: void SendPosition(SmoresModulePtr module, double x, double y, double orientation_angle, int group = 0, unsigned int time_stamp = 0, int priority = 0);
-    
-    // Those commands are not recommended for sending the gait table or position coordinates
-    // But could be used in the direct driving situation
-    public: void SendGaitTableInstance(SmoresModulePtr module, bool flag[4], double gait_value[4], int msg_type = 4);
-
-    public: void SendPositionInstance(SmoresModulePtr module, double x, double y, double orientation_angle);
-
-    // Erase all the existing commands of a specific module
-    public: void EraseComaands(SmoresModulePtr module);  // Need to be tested
-
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // These functions are utility functions
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    public: int GetNodeIDByName(string node_name);
-
-    public: SmoresModulePtr GetModulePtrByName(string module_name);
-
-    // public: ModuleCommandsPtr GetCommandPtrByModule(SmoresModulePtr module_ptr)
-    // {
-    //   ModuleCommandsPtr command_squence;
-    //   for (unsigned int i = 0; i < ModuleCommandContainer.size(); ++i)
-    //   {
-    //     if (module_ptr == ModuleCommandContainer.at(i)->WhichModule)
-    //     {
-    //       command_squence = ModuleCommandContainer.at(i);
-    //       break;
-    //     }
-    //   }
-    //   return command_squence;
-    // }
-    public: void EraseCommandPtrByModule(SmoresModulePtr module_ptr);
- 
-    public: int GetModuleIDXByName(string module_name);
-
-    // public: void SetThePointerInSmoresModule(void)
-    // {
-    //   if (NeedToSetPtr)
-    //   {
-    //     for (unsigned int i = 0; i < moduleList.size(); ++i)
-    //     {
-    //       moduleList.at(i)->SetModulePtr(currentWorld->GetModel(moduleList.at(i)->ModuleID));
-    //     }
-    //     NeedToSetPtr = false;
-    //     cout<<"World: Pointer has been assigned"<<endl;
-    //   }
-    // }
-    // Check whether two nodes are connected together
-    public: bool AlreadyConnected(SmoresModulePtr module_1, SmoresModulePtr module_2, int node1_ID, int node2_ID);
-    
-    // Check whether two modules have already connected on a node
-    public: bool AlreadyConnected(SmoresModulePtr module_1, SmoresModulePtr module_2);
-    
-    // Check whether a node a of module has been occupied
-    public: bool AlreadyConnected(SmoresModulePtr module, int node_ID);
-    
-    // This function is used to count for a configuration, how many modules are there
-    private: unsigned int CountModules(SmoresModulePtr module);
-    
-    // This function is only for demonstration
-    void readFileAndGenerateCommands(const char* fileName);
-
-    void currentCommandGroupInitialization(void);
-
-    private: physics::WorldPtr currentWorld;
-    private: event::ConnectionPtr addEntityConnection;
-    private: transport::PublisherPtr statePub;
-    // private: vector<transport::PublisherPtr> WorldPublisher;
-    private: vector<transport::SubscriberPtr> WorldColSubscriber;
-    // The pointer vector for all the models in the world
-    private: vector<SmoresModulePtr> moduleList;
-    // The vectors that store the pending connection request and information
-    private: vector<CollisionInformation> PendingRequest;
-    // The vector for connection record
-    private: vector<physics::JointPtr> DynamicConnections;
-    // The event that will be refreshed in every iteration of the simulation
-    private: event::ConnectionPtr updateConnection;
-    // The container that has all the edges
-    private: vector<SmoresEdgePtr> ConnectionEdges;
-    // The indicator of a new model has been added
-    private: int NeedToSetPtr;
-    // A String vector which contain the initial joint angles of modules
-    private: vector<string> InitalJointValue;
-    private: vector<math::Pose> InitialPosition;
-    
-    private: vector<ModuleCommandsPtr> ModuleCommandContainer;
-    private: int CurrentCommandGroup;
-    private: int CurrentMinimalGroup;
-    //+++++++++ testing ++++++++++++++++++++++++++++
-    private: int infoCounter;
-    private: int numOfModules;
-    private: int test_count;
-    bool insertModuleFlag;
-    bool AlreadyBuild;
-    // private: bool FinishFlag;
-    // vector<std::array<double,4>> jointCommands;
-    double jointCommands[10][4];
-    vector<int> relatedModules;
-   };
-}
+ private: 
+  physics::WorldPtr currentWorld;
+  event::ConnectionPtr addEntityConnection;
+  transport::PublisherPtr welcomePub;
+  /// The pointer vector for all the models in the world
+  vector<SmoresModulePtr> moduleList;
+  /// The vectors that store the pending connections request and information
+  vector<CollisionInformation> pendingRequest;
+  /// The vector for connection record
+  vector<physics::JointPtr> dynamicConnections;
+  /// The event that will be refreshed in every iteration of the simulation
+  event::ConnectionPtr updateConnection;
+  /// The container that has all the edges
+  vector<SmoresEdgePtr> connectionEdges;
+  /// The indicator of a new model has been added
+  /// TODO: A better mechnisam should be designed
+  int needToSetPtr;
+  /// A String vector which contain the initial joint angles of modules
+  vector<string> initalJointValue;
+  vector<math::Pose> initialPosition;
+  /// A vector created for command management
+  vector<ConditionPtr> commandConditions;
+  vector<ModuleCommandsPtr> moduleCommandContainer;
+// private: vector<transport::PublisherPtr> WorldPublisher;
+  /// This is used for automatical magnetic connection
+  vector<transport::SubscriberPtr> WorldColSubscriber;
+  /// Auto Magnetic Connection Enable Flag
+  bool autoMagneticConnectionFlag;
+// private: int CurrentCommandGroup;
+// private: int CurrentMinimalGroup;
+//+++++++++ testing ++++++++++++++++++++++++++++
+// private: bool FinishFlag;
+// vector<std::array<double,4>> jointCommands;
+};
+} // namespace gazebo
 #endif
