@@ -15,6 +15,6 @@ include_directories(
 link_directories(${GAZEBO_LIBRARY_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/msgs)
 add_subdirectory(msgs)
 
-add_library(SuperServer SHARED SuperServer.cc SmoresNode.cc SmoresEdge.cc SmoresModule.cc CollisionInformation.cc Condition.cc)
-target_link_libraries(SuperServer collision_message_plus command_message ${GAZEBO_libraries} ${Boost_LIBRARIES})
-add_dependencies(SuperServer collision_message_plus command_message)
+add_library(WorldServer SHARED WorldServer.cc SmoresNode.cc SmoresEdge.cc SmoresModule.cc CollisionInformation.cc Condition.cc CommandManagement.cc)
+target_link_libraries(WorldServer collision_message_plus command_message ${GAZEBO_libraries} ${Boost_LIBRARIES})
+add_dependencies(WorldServer collision_message_plus command_message)

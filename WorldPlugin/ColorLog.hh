@@ -22,11 +22,16 @@ enum Code {
 };
 class Modifier {
   Code code;
+  bool bold;
  public:
-  Modifier(Code pCode) : code(pCode) {}
+  Modifier(Code pCode) : code(pCode) {bold = false;}
+  Modifier(Code pCode,bool pBold) : code(pCode) {bold = pBold;}
   friend std::ostream&
   operator<<(std::ostream& os, const Modifier& mod) {
-      return os << "\033[" << mod.code << "m";
+    if (mod.bold) {
+      return os << "\033[1;" << mod.code << "m";
+    }
+    return os << "\033[0;" << mod.code << "m";
   }
 };
 }
