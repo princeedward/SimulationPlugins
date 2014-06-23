@@ -156,8 +156,6 @@ class WorldServer : public WorldPlugin
       string condition_str, string dependency_str);
   void SendGaitTable(SmoresModulePtr module, string module1, string module2, 
       int node1, int node2, int commandtype);
-  // void SendPosition(SmoresModulePtr module, double x, double y, 
-  //    double orientation_angle, int group, unsigned int time_stamp int priority);
   /// These two functions can only be used in the direct driving situation
   void SendGaitTableInstance(SmoresModulePtr module, const bool *flag, 
       const double *gait_value, int msg_type);
