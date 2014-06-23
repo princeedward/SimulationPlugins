@@ -1,4 +1,4 @@
-#include "ContactSensor.hh"
+#include "ContactPublisher.hh"
 // Declaration of the objects used from standard libraries
 using std::string;
 using std::cout;
