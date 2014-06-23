@@ -9,7 +9,7 @@ foreach(ITR ${GAZEBO_INCLUDE_DIRS})
 endforeach()
 
 set (msgs
-  collision_message_plus.proto
+  collision_message.proto
   command_message.proto
   ${PROTOBUF_IMPORT_DIRS}/pose.proto
   ${PROTOBUF_IMPORT_DIRS}/vector3d.proto
@@ -18,8 +18,8 @@ set (msgs
   ${PROTOBUF_IMPORT_DIRS}/time.proto
 )
 PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS ${msgs})
-add_library(collision_message_plus SHARED ${PROTO_SRCS})
-target_link_libraries(collision_message_plus ${PROTOBUF_LIBRARY})
+add_library(collision_message SHARED ${PROTO_SRCS})
+target_link_libraries(collision_message ${PROTOBUF_LIBRARY})
 
 add_library(command_message SHARED ${PROTO_SRCS})
 target_link_libraries(command_message ${PROTOBUF_LIBRARY})

@@ -18,7 +18,7 @@
 #include <gazebo/common/common.hh>
 // Google protocol buffers
 // Classes for communication between different plugins
-#include "collision_message_plus.pb.h"
+#include "collision_message.pb.h"
 #include "command_message.pb.h"
 // The head file which contains the joint_plus structure
 #include "SmoresJoint.hh"

@@ -224,7 +224,7 @@ void ModelController::CollisionPubAndSubInitialization(void)
 
   string collision_pub_name = "~/"+model->GetName()+"_Collision";
   collisionInfoToServer = node
-      ->Advertise<collision_message_plus::msgs::CollisionMessage>(collision_pub_name);
+      ->Advertise<collision_message::msgs::CollisionMessage>(collision_pub_name);
 } // ModelController::CollisionPubAndSubInitialization
 void ModelController::CollisionReceivingCallback(GzStringPtr &msg)
 {
@@ -232,7 +232,7 @@ void ModelController::CollisionReceivingCallback(GzStringPtr &msg)
   // Get the names of the links that involve in the collision
   string collison1 = msgs_info.substr(0,msgs_info.find(","));
   string collison2 = msgs_info.substr(msgs_info.find(",")+1,-1);
-  collision_message_plus::msgs::CollisionMessage forward_collision_msgs;
+  collision_message::msgs::CollisionMessage forward_collision_msgs;
   string link_name;
   // Changed the order of reported collisions
   // Make the link of the current model at the first

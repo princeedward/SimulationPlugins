@@ -27,7 +27,7 @@
 #include "gazebo/physics/physics.hh"
 #include "gazebo/msgs/msgs.hh"
 // Libraries for messages needed to use to communicate between plugins
-#include "collision_message_plus.pb.h"
+#include "collision_message.pb.h"
 #include "command_message.pb.h"
 // XML paser libraries
 #include "rapidxml.hpp"
@@ -53,7 +53,7 @@ using std::string;
 using std::vector;
 
 typedef const boost::shared_ptr
-    <const collision_message_plus::msgs::CollisionMessage> CollisionMessagePtr;
+    <const collision_message::msgs::CollisionMessage> CollisionMessagePtr;
 typedef const boost::shared_ptr
     <const command_message::msgs::CommandMessage> CommandMessagePtr;
 typedef boost::shared_ptr<gazebo::Condition> ConditionPtr;
