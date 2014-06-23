@@ -9,10 +9,10 @@ if (PKG_CONFIG_FOUND)
 endif()
 include_directories(
 	${GAZEBO_INCLUDE_DIRS}
-	${CMAKE_CURRENT_BINARY_DIR}/msgs
+	${CMAKE_CURRENT_BINARY_DIR}/MessageDefinition
 	)
-link_directories(${GAZEBO_LIBRARY_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/msgs)
-add_subdirectory(msgs)
+link_directories(${GAZEBO_LIBRARY_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/MessageDefinition)
+add_subdirectory(../MessageDefinition MessageDefinition)
 
 add_library(ModuleController SHARED ModelController.cc)
 target_link_libraries(ModuleController collision_message_plus command_message ${GAZEBO_libraries} ${Boost_LIBRARIES})
