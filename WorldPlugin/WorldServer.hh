@@ -1,15 +1,17 @@
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // Author: Edward Yunkai Cui
-// Description: This is the world plugin that acts as a middle ware 
-//              in this simulation. The main functions of this plugin
-//              are managing magnetic connections, loading configurations, 
-//              interpreting gait commands, communication mangement, 
-//              shared library management, module configuration management,
-//              exchangeing information
+// Description: This is a world plugin template for this simulation that
+//              provides an interface to serve as a middle ware. The main 
+//              functions of this plugin are managing magnetic connections,
+//              loading configurations, interpreting gait commands, managing 
+//              and routing communications, providing APIs to manage the
+//              shared libraries, managing module configurations, etc.
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifndef _GAZEBO_SUPER_SERVER_HH_
-#define _GAZEBO_SUPER_SERVER_HH_
-
+#ifndef _GAZEBO_WORLD_SERVER_HH_
+#define _GAZEBO_WORLD_SERVER_HH_
+#ifndef _GAZEBO_CUTOMIZED_WORLD_PLUGIN
+#define _GAZEBO_CUTOMIZED_WORLD_PLUGIN WorldServer
+#endif
 #include <stdlib.h>
 
 #include <string>
@@ -87,6 +89,8 @@ class WorldServer : public WorldPlugin
   void InsertModel(string name, math::Pose position);
   /// Insert a model to the current world, with joint angles specified
   void InsertModel(string name, math::Pose position, string joint_angles);
+  /// Delete a model that already in the world
+  void DeleteModule(string module_name);
   /// This function is used to build a configuration using a XML file
   void BuildConfigurationFromXML(string file_name);
   /// This function is used to build connection using a XML file
@@ -191,6 +195,8 @@ class WorldServer : public WorldPlugin
   void InterpretSpecialString(string a_command_str);
   /// Count how many modules are there in a cluster
   unsigned int CountModules(SmoresModulePtr module);
+  /// Get the length of the initial joint value setting sequence
+  unsigned int GetInitialJointSequenceSize(void);
 
  private: 
   void Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf);
@@ -237,8 +243,9 @@ class WorldServer : public WorldPlugin
   /// Find the dpendency in a command string
   string StripOffDependency(string &command_string);
 
- private: 
+ public:
   physics::WorldPtr currentWorld;
+ private: 
   event::ConnectionPtr addEntityConnection;
   transport::PublisherPtr welcomePub;
   /// The pointer vector for all the models in the world

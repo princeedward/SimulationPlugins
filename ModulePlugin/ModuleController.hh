@@ -40,13 +40,13 @@ namespace gazebo
 // This class programmed follows the gazebo model plugin standard
 // All the low level controllers of SMORES robot are in here
 // A graphic structure can be find here: 
-class ModelController : public ModelPlugin 
+class ModuleController : public ModelPlugin 
 {
  public:
   /// Constructor
-  ModelController();
+  ModuleController();
   /// Destructor
-  ~ModelController();
+  ~ModuleController();
 
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //+  Useful functions to get model status and other tool functions  +
@@ -197,6 +197,6 @@ class ModelController : public ModelPlugin
   // DEPRECATED: This is no longer needed
   // TODO: command id should be implemented in the future
   int commandPriority;
-}; // class ModelController
+}; // class ModuleController
 } // namespace gazebo
 #endif

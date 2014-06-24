@@ -36,20 +36,7 @@ void WorldServer::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
 } // WorldServer::Load
 void WorldServer::ExtraInitializationInLoad(
     physics::WorldPtr _parent, sdf::ElementPtr _sdf)
-{
-  // Build initial configuration from file
-  BuildConfigurationFromXML(INTIALCONFIGURATION);
-
-  // Here is the test for dynamic shared libraries
-  // TODO: Need to be removed after testing
-  string lib_path 
-      = "/home/edward/.gazebo/models/SMORES6Uriah/plugins/libSpiderController.so";
-  void *current_handle = NULL;
-  LibraryTemplate *spider = DynamicallyLoadedLibrary(
-      lib_path.c_str(),current_handle);
-  spider->WhenRunning();
-  CloseLoadedLibrary(&current_handle);
-} // WorldServer::ExtraInitializationInLoad
+{} // WorldServer::ExtraInitializationInLoad
 LibraryTemplate *WorldServer::DynamicallyLoadedLibrary(
    const char* library_path, void *lib_handle)
 {
@@ -127,7 +114,7 @@ void WorldServer::OnSystemRunning(const common::UpdateInfo & _info)
   OnSystemRunningExtra(_info);
 } // WorldServer::OnSystemRunning
 void WorldServer::OnSystemRunningExtra(
-    const common::UpdateInfo & _info){}
+    const common::UpdateInfo & _info){} // WorldServer::OnSystemRunningExtra
 void WorldServer::BuildConfigurationFromXML(string file_name)
 {
   file<> xmlFile(file_name.c_str());
@@ -259,15 +246,7 @@ void WorldServer::FeedBackMessageDecoding(CommandMessagePtr &msg)
   }
 } // WorldServer::FeedBackMessageDecoding
 void WorldServer::ExtraWorkWhenModelInserted(CommandMessagePtr &msg)
-{
-  if (initalJointValue.size() == 1) {
-    // Confiuration connection initialized
-    BuildConnectionFromXML(INTIALCONFIGURATION);
-    cout<<"World: Build the connection"<<endl;
-    ReadFileAndGenerateCommands("Commands");
-    cout<<"World: Command been sent"<<endl;
-  }
-} // WorldServer::ExtraWorkWhenModelInserted
+{} // WorldServer::ExtraWorkWhenModelInserted
 void WorldServer::AutomaticMagneticConnectionManagement(CollisionMessagePtr &msg)
 {
   string model_of_collision1 
@@ -542,6 +521,33 @@ void WorldServer::InsertModel(string name, math::Pose position,
         <<def_log<<endl;
   }
 } // WorldServer::InsertModel
+void WorldServer::DeleteModule(string module_name)
+{
+  SmoresModulePtr currentModule = GetModulePtrByName(module_name);
+  // ---------- Destroy all the edges -------------------
+  if (currentModule->NodeFWPtr->Edge) {
+    Disconnect(currentModule, 0);
+  }
+  if (currentModule->NodeLWPtr->Edge) {
+    Disconnect(currentModule, 1);
+  }
+  if (currentModule->NodeRWPtr->Edge) {
+    Disconnect(currentModule, 2);
+  }
+  if (currentModule->NodeUHPtr->Edge) {
+    Disconnect(currentModule, 3);
+  }
+  // ---------- Destroy module in the module list -----
+  for (unsigned int i = 0; i < moduleList.size(); ++i) {
+    if (currentModule == moduleList.at(i)) {
+      moduleList.at(i).reset();
+      moduleList.erase(moduleList.begin()+i);
+      break;
+    }
+  }
+  currentWorld->GetModel(module_name)->Fini();
+  needToSetPtr -= 1;
+}
 void WorldServer::PassiveConnect(SmoresModulePtr module_1, 
     SmoresModulePtr module_2, int node1_ID, int node2_ID, 
     double node_angle, double node_distance)
@@ -1109,6 +1115,10 @@ unsigned int WorldServer::CountModules(SmoresModulePtr module)
   }
   return cluster.size();
 } // WorldServer::CountModules
+unsigned int WorldServer::GetInitialJointSequenceSize(void)
+{
+  return initalJointValue.size();
+} // WorldServer::GetInitialJointSequenceSize
 // void WorldServer::ReadFileAndGenerateCommands(const char* fileName)
 // {
 //   string output;
@@ -1857,7 +1867,5 @@ bool WorldServer::CheckCondition(string condition_id)
   }
   cout<<"World: didn't find the condition"<<endl;
   return true;
-} // WorldServer::CheckCondition  
-// Register this plugin with the simulator
-GZ_REGISTER_WORLD_PLUGIN(WorldServer)
+} // WorldServer::CheckCondition
 } // namespace gazebo

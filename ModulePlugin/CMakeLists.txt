@@ -14,6 +14,6 @@ include_directories(
 link_directories(${GAZEBO_LIBRARY_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/MessageDefinition)
 add_subdirectory(../MessageDefinition MessageDefinition)
 
-add_library(ModuleController SHARED ModelController.cc)
+add_library(ModuleController SHARED ModuleController.cc)
 target_link_libraries(ModuleController collision_message command_message ${GAZEBO_libraries} ${Boost_LIBRARIES})
 add_dependencies(ModuleController collision_message command_message)
