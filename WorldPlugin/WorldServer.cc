@@ -521,6 +521,14 @@ void WorldServer::InsertModel(string name, math::Pose position,
         <<def_log<<endl;
   }
 } // WorldServer::InsertModel
+void WorldServer::AddInitialPosition(math::Pose position)
+{
+  initialPosition.push_back(position);
+} // WorldServer::AddInitialPosition
+void WorldServer::AddInitialJoints(string joint_angles)
+{
+  initalJointValue.push_back(joint_angles);
+} // WorldServer::AddInitialJoints
 void WorldServer::DeleteModule(string module_name)
 {
   SmoresModulePtr currentModule = GetModulePtrByName(module_name);

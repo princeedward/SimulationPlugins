@@ -5,6 +5,53 @@ ConfigEditor::ConfigEditor()
 		:WorldServer()
 {}
 ConfigEditor::~ConfigEditor(){}
+void ConfigEditor::InsertModel(string name, math::Pose position)
+{
+  if (!currentWorld->GetModel(name)) {
+    sdf::SDFPtr model_sdf;
+    model_sdf.reset(new sdf::SDF);
+    sdf::init(model_sdf);
+    sdf::readFile(MODULEPATH, model_sdf);
+    sdf::ElementPtr model_element = model_sdf->root->GetElement("model");
+    math::Pose position_calibrate(
+        math::Vector3(position.pos.x, position.pos.y, position.pos.z-0.05), 
+        position.rot);
+    model_element->GetAttribute("name")->Set(name);
+    model_element->GetElement("pose")->Set(position_calibrate);
+    currentWorld->InsertModelSDF(*model_sdf);
+    AddInitialPosition(position);
+  }else{
+    Color::Modifier red_log(Color::FG_RED);
+    Color::Modifier def_log(Color::FG_DEFAULT);
+    cout<<red_log<<"WARNING: World: Insertion failed: module name exists."
+        <<def_log<<endl;
+  }
+}
+void ConfigEditor::InsertModel(string name, math::Pose position, 
+    string joint_angles)
+{
+  if (!currentWorld->GetModel(name))
+  {
+    sdf::SDFPtr model_sdf;
+    model_sdf.reset(new sdf::SDF);
+    sdf::init(model_sdf);
+    sdf::readFile(MODULEPATH, model_sdf);
+    sdf::ElementPtr model_element = model_sdf->root->GetElement("model");
+    math::Pose position_calibrate(
+        math::Vector3(position.pos.x, position.pos.y, position.pos.z-0.05), 
+        position.rot);
+    model_element->GetAttribute("name")->Set(name);
+    model_element->GetElement("pose")->Set(position_calibrate);
+    currentWorld->InsertModelSDF(*model_sdf);
+    AddInitialJoints(joint_angles);
+    AddInitialPosition(position);
+  }else{
+    Color::Modifier red_log(Color::FG_RED);
+    Color::Modifier def_log(Color::FG_DEFAULT);
+    cout<<red_log<<"WARNING: World: Insertion failed: module name exists."
+        <<def_log<<endl;
+  }
+}
 void ConfigEditor::ExtraInitializationInLoad(physics::WorldPtr _parent, 
       sdf::ElementPtr _sdf)
 {
