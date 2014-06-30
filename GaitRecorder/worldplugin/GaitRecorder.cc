@@ -65,15 +65,15 @@ void GaitRecorder::ExtraInitializationInLoad(physics::WorldPtr _parent,
 } // GaitRecorder::ExtraInitializationInLoad
 void GaitRecorder::ExtraWorkWhenModelInserted(CommandMessagePtr &msg)
 {
-  // if (GetInitialJointSequenceSize() == 1) {
-  //   // Confiuration connection initialized
-  //   BuildConnectionFromXML(INTIALCONFIGURATION);
-  //   cout<<"World: Build the connection"<<endl;
-  //   string new_frame_name = "frame0";
-  //   Frame new_frame(new_frame_name);
-  //   RecordCurrentPose(new_frame);
-  //   frames.push_back(new_frame);
-  // }
+  if (GetInitialJointSequenceSize() == 1) {
+    // Confiuration connection initialized
+    BuildConnectionFromXML(INTIALCONFIGURATION);
+    cout<<"World: Build the connection"<<endl;
+    string new_frame_name = "frame0";
+    Frame new_frame(new_frame_name);
+    RecordCurrentPose(new_frame);
+    frames.push_back(new_frame);
+  }
 } // GaitRecorder::ExtraWorkWhenModelInserted
 void GaitRecorder::GaitRecorderMessageDecoding(GaitRecMessagePtr &msg)
 {
