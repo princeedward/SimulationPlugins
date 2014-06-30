@@ -169,9 +169,40 @@ void WorldServer::BuildConnectionFromXML(string file_name)
     double angle = atof(angle_string.c_str());
     SmoresModulePtr model1_ptr = GetModulePtrByName(module1_name);
     SmoresModulePtr model2_ptr = GetModulePtrByName(module2_name);
+    math::Pose module1_pose = model1_ptr->ModuleObject->GetWorldPose();
+    math::Pose module2_pose = model2_ptr->ModuleObject->GetWorldPose();
+    cout<<"World: before connect: "<< model1_ptr->ModuleObject->GetName()<<": ("
+        <<module1_pose.pos.x<<", "
+        <<module1_pose.pos.y<<", "
+        <<module1_pose.pos.z<<", "
+        <<module1_pose.rot.GetRoll()<<", "
+        <<module1_pose.rot.GetPitch()<<", "
+        <<module1_pose.rot.GetYaw()<<") "<<endl;
+    cout<<"World: before connect: "<< model2_ptr->ModuleObject->GetName()<<": ("
+        <<module2_pose.pos.x<<", "
+        <<module2_pose.pos.y<<", "
+        <<module2_pose.pos.z<<", "
+        <<module2_pose.rot.GetRoll()<<", "
+        <<module2_pose.rot.GetPitch()<<", "
+        <<module2_pose.rot.GetYaw()<<") "<<endl;
     ActiveConnect(model1_ptr,model2_ptr,node1_ID,node2_ID, angle, distance);
+    cout<<"World: after connect: "<< model1_ptr->ModuleObject->GetName()<<": ("
+        <<module1_pose.pos.x<<", "
+        <<module1_pose.pos.y<<", "
+        <<module1_pose.pos.z<<", "
+        <<module1_pose.rot.GetRoll()<<", "
+        <<module1_pose.rot.GetPitch()<<", "
+        <<module1_pose.rot.GetYaw()<<") "<<endl;
+    cout<<"World: after connect: "<< model2_ptr->ModuleObject->GetName()<<": ("
+        <<module2_pose.pos.x<<", "
+        <<module2_pose.pos.y<<", "
+        <<module2_pose.pos.z<<", "
+        <<module2_pose.rot.GetRoll()<<", "
+        <<module2_pose.rot.GetPitch()<<", "
+        <<module2_pose.rot.GetYaw()<<") "<<endl;
     connection_node = connection_node->next_sibling();
   }
+  cout<<"World: Finishing up."<<endl;
 } // WorldServer::BuildConnectionFromXML
 void WorldServer::FeedBackMessageDecoding(CommandMessagePtr &msg)
 {
@@ -321,12 +352,20 @@ void WorldServer::ConnectAndDynamicJointGeneration(
 {
   math::Pose ContactLinkPos = module_1->GetLinkPtr(node1_ID)->GetWorldPose();
   math::Pose PosOfTheOtherModel = module_2->GetLinkPtr(node2_ID)->GetWorldPose();
-  cout<<"World: Post position of the module 1: ("
+  cout<<"World: Pre position of the module 1:"
+      <<module_1->ModuleObject->GetName()<<": ("
       <<ContactLinkPos.pos.x<<","<<ContactLinkPos.pos.y<<","
-      <<ContactLinkPos.pos.z<<")"<<endl;
-  cout<<"World: Post position of the module 2: ("
+      <<ContactLinkPos.pos.z<<","
+      <<ContactLinkPos.rot.GetRoll()<<","
+      <<ContactLinkPos.rot.GetPitch()<<","
+      <<ContactLinkPos.rot.GetYaw()<<")"<<endl;
+  cout<<"World: Pre position of the module 2:"
+      <<module_2->ModuleObject->GetName()<<": ("
       <<PosOfTheOtherModel.pos.x<<","<<PosOfTheOtherModel.pos.y<<","
-      <<PosOfTheOtherModel.pos.z<<")"<<endl;
+      <<PosOfTheOtherModel.pos.z<<","
+      <<PosOfTheOtherModel.rot.GetRoll()<<","
+      <<PosOfTheOtherModel.rot.GetPitch()<<","
+      <<PosOfTheOtherModel.rot.GetYaw()<<")"<<endl;
   physics::LinkPtr Link1, Link2;
   math::Vector3 axis;
   math::Pose position_of_module1(math::Vector3(0,0,0),math::Quaternion(0,0,0,0));
@@ -346,6 +385,20 @@ void WorldServer::ConnectAndDynamicJointGeneration(
   module_1->ModuleObject->SetLinkWorldPose(position_of_module1,Link1);
   module_2->ModuleObject->SetLinkWorldPose(position_of_module2,Link2);
 
+  cout<<"World: Post position of the module 1:"
+      <<module_1->ModuleObject->GetName()<<": ("
+      <<position_of_module1.pos.x<<","<<position_of_module1.pos.y<<","
+      <<position_of_module1.pos.z<<","
+      <<position_of_module1.rot.GetRoll()<<","
+      <<position_of_module1.rot.GetPitch()<<","
+      <<position_of_module1.rot.GetYaw()<<")"<<endl;
+  cout<<"World: Post position of the module 2:"
+      <<module_2->ModuleObject->GetName()<<": ("
+      <<position_of_module2.pos.x<<","<<position_of_module2.pos.y<<","
+      <<position_of_module2.pos.z<<","
+      <<position_of_module2.rot.GetRoll()<<","
+      <<position_of_module2.rot.GetPitch()<<","
+      <<position_of_module2.rot.GetYaw()<<")"<<endl;
   //++++ This part of the code generate the dynamic joint +++++++++++++++++++++
   physics::JointPtr DynamicJoint;
   DynamicJoint = currentWorld->GetPhysicsEngine()->CreateJoint(
@@ -397,7 +450,7 @@ void WorldServer::NewPositionCalculation(SmoresEdgePtr an_edge,
       .Dot(x_axis_of_new_direction)*x_axis_of_new_direction;
   if (node1_ID == 1 || node1_ID == 2) {
     for (int i = 0; i < 3; ++i) {
-      z_rotation[i] = ConversionForAngleOverPi(z_rotation[i] - 3/2*PI);
+      z_rotation[i] = ConversionForAngleOverPi(z_rotation[i] - 3.0/2.0*PI);
     }
     new_position_of_link2 = old_pose_of_module1.pos 
         + (0.1+an_edge->Distance)*old_pose_of_module1.rot.GetXAxis();
@@ -993,6 +1046,18 @@ SmoresModulePtr WorldServer::GetModulePtrByName(string module_name)
   }
   return exist_module;
 } // WorldServer::GetModulePtrByName
+SmoresModulePtr WorldServer::GetModulePtrByIDX(unsigned int idx)
+{
+  SmoresModulePtr exist_module;
+  if (idx < moduleList.size()) {
+    exist_module = moduleList.at(idx);
+  }
+  return exist_module;
+} // WorldServer::GetModulePtrByIDX
+unsigned int WorldServer::GetModuleListSize(void)
+{
+  return moduleList.size();
+} // WorldServer::GetModuleListSize
 void WorldServer::EraseCommandPtrByModule(SmoresModulePtr module_ptr)
 {
   for (unsigned int i = 0; i < moduleCommandContainer.size(); ++i) {

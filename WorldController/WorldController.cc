@@ -27,8 +27,8 @@ void WorldController::ExtraWorkWhenModelInserted(CommandMessagePtr &msg)
     // Confiuration connection initialized
     BuildConnectionFromXML(INTIALCONFIGURATION);
     cout<<"World: Build the connection"<<endl;
-    ReadFileAndGenerateCommands("Commands");
-    cout<<"World: Command been sent"<<endl;
+    // ReadFileAndGenerateCommands("Commands");
+    // cout<<"World: Command been sent"<<endl;
   }
 } // WorldController::ExtraWorkWhenModelInserted
 // Register this plugin with the simulator

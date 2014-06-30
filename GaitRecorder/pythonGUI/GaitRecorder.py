@@ -1,28 +1,37 @@
+#--------------- System related ----------------------
+import time
+from subprocess import call, Popen, PIPE
+import sys
+#--------------- GUI Modules -------------------------
 from Tkinter import *
-import tkFileDialog
 import ttk
-import xml.etree.ElementTree as ET
-import numpy as np
-# from PIL import Image, ImageTk  # need to install: sudo apt-get install python-imaging-tk
+import tkFileDialog
+#--------------- Representation related --------------
+import xml.etree.ElementTree as ET   # XML parser
 from Module import *
 from GaitEntry import *
+#--------------- Communiation related ----------------
+sys.path.append("/home/edward/Simulation Plugins/Util/python_util")
 from gait_recorder_message_pb2 import *
 # import eventlet  # need to install: $:sudo pip install eventlet
-from pygazebo import *  #need to install: $: sudo pip install pygazebo
+# from pygazebo import *  #need to install: $: sudo pip install pygazebo
 from gztopic import *
-# from SimpleKL import CloseEnough, Connectable
+#--------------- Mathematic related ------------------
+import numpy as np
+#--------------- Debuggin Tools ----------------------
 import pdb
-
+#------------- Window Size Settings ------------------
 window_width = 800
 window_height = 520
 Border_width = 20
 Border_hieht = 40
+PI = np.pi
 
 class App(Frame):
   
-  def __init__(self, parent):
+  def __init__(self, parent, flag):
     Frame.__init__(self, parent)   
-     
+    #------------ Variables Initialization --------------- 
     self.parent = parent
     self.modelname = StringVar()
     self.othermodelname = StringVar()
@@ -47,7 +56,7 @@ class App(Frame):
     self.DependencyList = []
     self.ModuleList = []
     self.currentgroup = 1
-    # self.Newframe = True
+    self.initflag = flag
     #-------------- File Definition ---------------------------
     # define options for opening or saving a file
     self.file_opt = options = {}
@@ -58,9 +67,17 @@ class App(Frame):
     options['parent'] = parent
     options['title'] = 'Open Configuration File'
 
+    #------------ Run Simulation and GUI ---------------------
+    if flag == 0: 
+      self.rungzserver = Popen(['sh', 'RunSimulation.sh'], stdout=PIPE)
+      time.sleep(8)
+      self.rungzclient = Popen(['gzclient'], stdout=PIPE)
+      time.sleep(1)
+
     #-------------- Establish Connection With Simulator -------
-    self.communicator = GzCommunicator()
-    self.communicator.StartCommunicator("/gazebo/GaitRecorder/gaitSubscriber","gait_recorder_message.GaitRecMessage")
+    if flag == 0 or flag == 2:
+      self.communicator = GzCommunicator()
+      self.communicator.StartCommunicator("/gazebo/GaitRecorder/gaitSubscriber","gait_recorder_message.GaitRecMessage")
 
     self.initUI()
     self.SaveCurrentPose()
@@ -282,7 +299,13 @@ class App(Frame):
     self.Addcommand.place(x = 5, y = window_height-Border_hieht-5, anchor = SW)
 
   def CloseWindow(self):
-    self.communicator.stop()
+    if self.initflag==0 or self.initflag==2:
+      self.communicator.stop()
+    if self.initflag==0:
+      self.rungzserver.terminate()
+      self.rungzclient.terminate()
+      call(["pkill", "gzserver"])
+      call(["pkill", "gzclient"])
     self.quit()
 
   def AskOpenFile(self):
@@ -327,10 +350,10 @@ class App(Frame):
   def UpdateJoint(self,*args):
     modelname = self.modelname.get()
     moduleObj = self.GetModuleByName(modelname)
-    self.Joint3.set(moduleObj.JointAngle[3]/np.pi*180)
-    self.frontangle.set(moduleObj.JointAngle[0]/np.pi*180)
-    self.left_angle.set(moduleObj.JointAngle[1]/np.pi*180)
-    self.right_angle.set(moduleObj.JointAngle[2]/np.pi*180)
+    self.Joint3.set(moduleObj.JointAngle[3]/PI*180)
+    self.frontangle.set(moduleObj.JointAngle[0]/PI*180)
+    self.left_angle.set(moduleObj.JointAngle[1]/PI*180)
+    self.right_angle.set(moduleObj.JointAngle[2]/PI*180)
     # self.group.set(moduleObj.Group)
     self.elapstime.set(0.0)
     # self.currentgroup = moduleObj.Group
@@ -357,8 +380,8 @@ class App(Frame):
     joints = []
     jointsflags = []
     if self.frontmode.get() == 0:
-      joints.append(self.frontangle.get()/180.0*np.pi)
-      # moduleObj.JointAngle[0] = self.front_angle.get()/180.0*np.pi
+      joints.append(self.frontangle.get()/180.0*PI)
+      # moduleObj.JointAngle[0] = self.front_angle.get()/180.0*PI
       moduleObj.Speeds[0] = 0
       jointsflags.append(0)
     else:
@@ -366,10 +389,10 @@ class App(Frame):
       moduleObj.Speeds[0] = 1
       jointsflags.append(1)
     if self.wheelmode.get() == 0 :
-      joints.append(self.left_angle.get()/180.0*np.pi)
-      joints.append(self.right_angle.get()/180.0*np.pi)
-      # moduleObj.JointAngle[1] = self.left_angle.get()/180.0*np.pi
-      # moduleObj.JointAngle[2] = self.right_angle.get()/180.0*np.pi
+      joints.append(self.left_angle.get()/180.0*PI)
+      joints.append(self.right_angle.get()/180.0*PI)
+      # moduleObj.JointAngle[1] = self.left_angle.get()/180.0*PI
+      # moduleObj.JointAngle[2] = self.right_angle.get()/180.0*PI
       moduleObj.Speeds[1] = 0
       moduleObj.Speeds[2] = 0
       jointsflags.append(0)
@@ -381,8 +404,8 @@ class App(Frame):
       moduleObj.Speeds[2] = 1
       jointsflags.append(1)
       jointsflags.append(1)
-    joints.append(self.Joint3.get()/180.0*np.pi)
-    # moduleObj.JointAngle[3] = self.Joint3.get()/180.0*np.pi
+    joints.append(self.Joint3.get()/180.0*PI)
+    # moduleObj.JointAngle[3] = self.Joint3.get()/180.0*PI
     print "Joint angles", joints
     moduleObj.JointAngle = tuple(joints)
     currenttimer = int(self.elapstime.get()*1000)
@@ -442,7 +465,6 @@ class App(Frame):
     self.CurrentFrameRec = []
     self.RefreshGaitRecorder()
     self.UpdateFrameBox()
-    self.Newframe = True
     self.SaveCurrentPose()
 
   def UpdateFrameBox(self):
@@ -570,17 +592,17 @@ class App(Frame):
       tmpstring = gaitentryobj.ModuleName[tmpstring.find(" ")+1:]
       self.othermodelname.set(tmpstring[0:tmpstring.find(" ")])
     else:
-      self.Joint3.set(gaitentryobj.Joints[3]/np.pi*180)
-      # self.front_angle.set(gaitentryobj.Joints[0]/np.pi*180)
-      # self.left_angle.set(gaitentryobj.Joints[1]/np.pi*180)
-      # self.right_angle.set(gaitentryobj.Joints[2]/np.pi*180)
+      self.Joint3.set(gaitentryobj.Joints[3]/PI*180)
+      # self.front_angle.set(gaitentryobj.Joints[0]/PI*180)
+      # self.left_angle.set(gaitentryobj.Joints[1]/PI*180)
+      # self.right_angle.set(gaitentryobj.Joints[2]/PI*180)
       # self.group.set(gaitentryobj.Group)
       self.elapstime.set(gaitentryobj.Timer/1000.0)
       # self.currentgroup = gaitentryobj.Group
       self.modelname.set(gaitentryobj.ModuleName)
       if gaitentryobj.AngleFlags[0] == 0:
         self.frontModA.select()
-        self.frontangle.set(gaitentryobj.Joints[0]/np.pi*180)
+        self.frontangle.set(gaitentryobj.Joints[0]/PI*180)
         self.frontspeed.set(0)
       else:
         self.frontspeed.set(gaitentryobj.Joints[0])
@@ -588,8 +610,8 @@ class App(Frame):
         self.frontModS.select()
       if gaitentryobj.AngleFlags[1] == 0:
         self.WheelModA.select()
-        self.left_angle.set(gaitentryobj.Joints[1]/np.pi*180)
-        self.right_angle.set(gaitentryobj.Joints[2]/np.pi*180)
+        self.left_angle.set(gaitentryobj.Joints[1]/PI*180)
+        self.right_angle.set(gaitentryobj.Joints[2]/PI*180)
         self.leftspeed.set(0)
         self.rightspeed.set(0)
       else:
@@ -610,18 +632,18 @@ class App(Frame):
       tmpstring = gaitentryobj.ModuleName[tmpstring.find(" ")+1:]
       gaitentryobj.ModuleName == gaitentryobj.ModuleName[0:2]+namestring1+" "+self.othermodelname.get()+" "+tmpstring
     else:
-      gaitentryobj.Joints[3] = self.Joint3.get()/180.0*np.pi
+      gaitentryobj.Joints[3] = self.Joint3.get()/180.0*PI
       if self.frontmode.get() == 0 :
         gaitentryobj.AngleFlags[0] = 0
-        gaitentryobj.Joints[0] = self.frontangle.get()/180.0*np.pi
+        gaitentryobj.Joints[0] = self.frontangle.get()/180.0*PI
       else:
         gaitentryobj.AngleFlags[0] = 1
         gaitentryobj.Joints[0] = self.frontspeed.get()
       if self.wheelmode.get() == 0 :
         gaitentryobj.AngleFlags[1] = 0
         gaitentryobj.AngleFlags[2] = 0
-        gaitentryobj.Joints[1] = self.left_angle.get()/180.0*np.pi
-        gaitentryobj.Joints[2] = self.right_angle.get()/180.0*np.pi
+        gaitentryobj.Joints[1] = self.left_angle.get()/180.0*PI
+        gaitentryobj.Joints[2] = self.right_angle.get()/180.0*PI
       else:
         gaitentryobj.AngleFlags[1] = 1
         gaitentryobj.AngleFlags[2] = 1
@@ -645,10 +667,6 @@ class App(Frame):
 
   def PlayFrame(self):
     for eachgait in self.CurrentFrameRec :
-      # if self.Newframe:
-      #   self.PublishMessage(eachgait,True)
-      #   # self.Newframe = False
-      # else:
       if not eachgait.SpecialEntry:
         self.PublishMessage(eachgait,True)
       else:
@@ -672,7 +690,8 @@ class App(Frame):
     # print "Listeners are ",self.publisher.showlisteners()
     # self.newconnection.sendData(newmessage)
     # self.publisher.publish(newmessage)
-    self.communicator.publish(newmessage)
+    if self.initflag==0 or self.initflag==2:
+      self.communicator.publish(newmessage)
     # eventlet.sleep(1.0)
     print "Information published"
 
@@ -692,7 +711,8 @@ class App(Frame):
     # print "Listeners are ",self.publisher.showlisteners()
     # self.newconnection.sendData(newmessage)
     # self.publisher.publish(newmessage)
-    self.communicator.publish(newmessage)
+    if self.initflag==0 or self.initflag==2:
+      self.communicator.publish(newmessage)
     # eventlet.sleep(1.0)
     print "Information published"
 
@@ -702,7 +722,8 @@ class App(Frame):
     newmessage.NewFrame = False
     newmessage.PlayStatus = True
     newmessage.ResetFlag = True
-    self.communicator.publish(newmessage)
+    if self.initflag==0 or self.initflag==2:
+      self.communicator.publish(newmessage)
     self.Playframe["state"] = NORMAL
     print "Reset message sent"
 
@@ -712,10 +733,11 @@ class App(Frame):
       newmessage.ModelName = self.modelname.get()
       newmessage.NewFrame = False
       newmessage.PlayStatus = False
-      jointangles = [self.frontangle.get()/180.0*np.pi, self.left_angle.get()/180.0*np.pi, self.right_angle.get()/180.0*np.pi, self.Joint3.get()/180.0*np.pi]
+      jointangles = [self.frontangle.get()/180.0*PI, self.left_angle.get()/180.0*PI, self.right_angle.get()/180.0*PI, self.Joint3.get()/180.0*PI]
       for i in xrange(4):
         newmessage.JointAngles.append(jointangles[i])
-      self.communicator.publish(newmessage)
+      if self.initflag==0 or self.initflag==2:
+        self.communicator.publish(newmessage)
       print "Angle Updating"
 
   def SaveGaitTable(self):
@@ -741,7 +763,8 @@ class App(Frame):
     newmessage.ModelName = "SaveFrame"
     newmessage.NewFrame = True
     newmessage.PlayStatus = True
-    self.communicator.publish(newmessage)
+    if self.initflag==0 or self.initflag==2:
+      self.communicator.publish(newmessage)
 
   def DisconnectSend(self):
     newmessage = GaitRecMessage()
@@ -759,7 +782,8 @@ class App(Frame):
     if self.dependency.get() != "" :
       newmessage.ExtrInfo += " (" + self.dependency.get() +")"
     newmessage.ExtrInfo += " ;"
-    self.communicator.publish(newmessage)
+    if self.initflag==0 or self.initflag==2:
+      self.communicator.publish(newmessage)
     newgaits = GaitEntry(newmessage.ExtrInfo,[0,0,0,0],self.elapstime.get(),self.dependency.get(),self.condition.get())
     newgaits.SpecialEntry = True
     self.CurrentFrameRec.append(newgaits)
@@ -782,7 +806,8 @@ class App(Frame):
       if self.dependency.get() != "" :
         newmessage.ExtrInfo += " (" + self.dependency.get() +")"
       newmessage.ExtrInfo += " ;"
-      self.communicator.publish(newmessage)
+      if self.initflag==0 or self.initflag==2:
+        self.communicator.publish(newmessage)
       newgaits = GaitEntry(newmessage.ExtrInfo,[0,0,0,0],self.elapstime.get(),self.dependency.get(),self.condition.get())
       newgaits.SpecialEntry = True
       self.CurrentFrameRec.append(newgaits)
@@ -817,13 +842,20 @@ class App(Frame):
     self.saveButton2["state"] = NORMAL
     self.Addframe["state"] = NORMAL
 
-def main():
+def main(flag):
   
   root = Tk()
   root.geometry(str(window_width)+"x"+str(window_height))
-  app = App(root)
+  app = App(root,flag)
   root.mainloop()  
 
 
 if __name__ == '__main__':
-  main()  
+  if len(sys.argv) < 2:
+    flag = 0
+  else:
+    if sys.argv[1] == '-gd': # gui debug mode, open gui only
+      flag = 1
+    if sys.argv[1] == '-o':  # do not invoke simulation
+      flag = 2
+  main(flag)  

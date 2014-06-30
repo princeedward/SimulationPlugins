@@ -143,6 +143,7 @@ void ControlCenter::Load(physics::WorldPtr _parent, sdf::ElementPtr _sdf)
 
   // LibraryTemplate *Spider = mkr();
   // Spider->WhenRunning();
+  // this->currentWorld->EnablePhysicsEngine(false);
 }
 
 void ControlCenter::addEntity2World(std::string & _info)
