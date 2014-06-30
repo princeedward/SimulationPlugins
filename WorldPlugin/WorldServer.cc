@@ -171,35 +171,7 @@ void WorldServer::BuildConnectionFromXML(string file_name)
     SmoresModulePtr model2_ptr = GetModulePtrByName(module2_name);
     math::Pose module1_pose = model1_ptr->ModuleObject->GetWorldPose();
     math::Pose module2_pose = model2_ptr->ModuleObject->GetWorldPose();
-    cout<<"World: before connect: "<< model1_ptr->ModuleObject->GetName()<<": ("
-        <<module1_pose.pos.x<<", "
-        <<module1_pose.pos.y<<", "
-        <<module1_pose.pos.z<<", "
-        <<module1_pose.rot.GetRoll()<<", "
-        <<module1_pose.rot.GetPitch()<<", "
-        <<module1_pose.rot.GetYaw()<<") "<<endl;
-    cout<<"World: before connect: "<< model2_ptr->ModuleObject->GetName()<<": ("
-        <<module2_pose.pos.x<<", "
-        <<module2_pose.pos.y<<", "
-        <<module2_pose.pos.z<<", "
-        <<module2_pose.rot.GetRoll()<<", "
-        <<module2_pose.rot.GetPitch()<<", "
-        <<module2_pose.rot.GetYaw()<<") "<<endl;
     ActiveConnect(model1_ptr,model2_ptr,node1_ID,node2_ID, angle, distance);
-    cout<<"World: after connect: "<< model1_ptr->ModuleObject->GetName()<<": ("
-        <<module1_pose.pos.x<<", "
-        <<module1_pose.pos.y<<", "
-        <<module1_pose.pos.z<<", "
-        <<module1_pose.rot.GetRoll()<<", "
-        <<module1_pose.rot.GetPitch()<<", "
-        <<module1_pose.rot.GetYaw()<<") "<<endl;
-    cout<<"World: after connect: "<< model2_ptr->ModuleObject->GetName()<<": ("
-        <<module2_pose.pos.x<<", "
-        <<module2_pose.pos.y<<", "
-        <<module2_pose.pos.z<<", "
-        <<module2_pose.rot.GetRoll()<<", "
-        <<module2_pose.rot.GetPitch()<<", "
-        <<module2_pose.rot.GetYaw()<<") "<<endl;
     connection_node = connection_node->next_sibling();
   }
   cout<<"World: Finishing up."<<endl;
