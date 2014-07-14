@@ -11,7 +11,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='gait_recorder_message.proto',
   package='gait_recorder_message.msgs',
-  serialized_pb='\n\x1bgait_recorder_message.proto\x12\x1agait_recorder_message.msgs\"\xd0\x01\n\x0eGaitRecMessage\x12\x11\n\tModelName\x18\x01 \x02(\t\x12\x10\n\x08NewFrame\x18\x02 \x02(\x08\x12\x12\n\nPlayStatus\x18\x03 \x02(\x08\x12\x17\n\x0bJointAngles\x18\x04 \x03(\x01\x42\x02\x10\x01\x12\r\n\x05Timer\x18\x05 \x01(\x05\x12\x11\n\tCondition\x18\x06 \x01(\t\x12\x12\n\nDependency\x18\x07 \x01(\t\x12\x10\n\x08\x45xtrInfo\x18\x08 \x01(\t\x12\x11\n\x05\x46lags\x18\t \x03(\x08\x42\x02\x10\x01\x12\x11\n\tResetFlag\x18\n \x01(\x08')
+  serialized_pb='\n\x1bgait_recorder_message.proto\x12\x1agait_recorder_message.msgs\"\xeb\x01\n\x0eGaitRecMessage\x12\x11\n\tModelName\x18\x01 \x02(\t\x12\x10\n\x08NewFrame\x18\x02 \x02(\x08\x12\x12\n\nPlayStatus\x18\x03 \x02(\x08\x12\x17\n\x0bJointAngles\x18\x04 \x03(\x01\x42\x02\x10\x01\x12\r\n\x05Timer\x18\x05 \x01(\x05\x12\x11\n\tCondition\x18\x06 \x01(\t\x12\x12\n\nDependency\x18\x07 \x01(\t\x12\x10\n\x08\x45xtrInfo\x18\x08 \x01(\t\x12\x11\n\x05\x46lags\x18\t \x03(\x08\x42\x02\x10\x01\x12\x11\n\tResetFlag\x18\n \x01(\x08\x12\x19\n\x11LoadConfiguration\x18\x0b \x01(\x08')
 
 
 
@@ -93,6 +93,13 @@ _GAITRECMESSAGE = descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    descriptor.FieldDescriptor(
+      name='LoadConfiguration', full_name='gait_recorder_message.msgs.GaitRecMessage.LoadConfiguration', index=10,
+      number=11, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -103,7 +110,7 @@ _GAITRECMESSAGE = descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=60,
-  serialized_end=268,
+  serialized_end=295,
 )
 
 DESCRIPTOR.message_types_by_name['GaitRecMessage'] = _GAITRECMESSAGE

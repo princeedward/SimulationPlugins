@@ -60,15 +60,12 @@ void GaitRecorder::ExtraInitializationInLoad(physics::WorldPtr _parent,
       topic_name,&GaitRecorder::GaitRecorderMessageDecoding, this);
   cout<<"World: subscriber topic: "<<this->gaitInfoSub->GetTopic()<<endl;
 
-  // Build initial configuration from file
-  BuildConfigurationFromXML(INTIALCONFIGURATION);
+  // // Build initial configuration from file
+  // BuildConfigurationFromXML(INTIALCONFIGURATION);
 } // GaitRecorder::ExtraInitializationInLoad
 void GaitRecorder::ExtraWorkWhenModelInserted(CommandMessagePtr &msg)
 {
   if (GetInitialJointSequenceSize() == 1) {
-    // Confiuration connection initialized
-    BuildConnectionFromXML(INTIALCONFIGURATION);
-    cout<<"World: Build the connection"<<endl;
     string new_frame_name = "frame0";
     Frame new_frame(new_frame_name);
     RecordCurrentPose(new_frame);
@@ -80,8 +77,7 @@ void GaitRecorder::GaitRecorderMessageDecoding(GaitRecMessagePtr &msg)
   string modelname = msg->modelname();
   bool begin_a_new_frame = msg->newframe();
   bool play_mode = msg->playstatus();
-  if (begin_a_new_frame)
-  {
+  if (begin_a_new_frame) {
     string new_frame_name = "frame"+util::to_string((int)frames.size());
     Frame new_frame(new_frame_name);
     RecordCurrentPose(new_frame);
@@ -89,136 +85,129 @@ void GaitRecorder::GaitRecorderMessageDecoding(GaitRecMessagePtr &msg)
     return;
   }
   // Reset the position
-  if (msg->has_resetflag())
-  {
+  if (msg->has_resetflag()) {
     // Reset the robot position
-    if (msg->resetflag())
-    {
+    if (msg->resetflag()) {
       SetPose(&frames.back());
     }
   }else{
-    // Sending gait table commands
-    if (play_mode)
-    {
-      // Disconnect Two Model
-      if (msg->has_extrinfo())
-      {
-        string extrainfo = msg->extrinfo();
-        if (extrainfo.substr(2,1).compare("+")==0 || 
-            extrainfo.substr(2,1).compare("-")==0)
-        {
-          bool connect = true;
-          if (extrainfo.substr(2,1).compare("-")==0)
-          {
-            connect = false;
-          }
-          extrainfo = extrainfo.substr(4);
-          string modulename1 = extrainfo.substr(1,extrainfo.find(" ")-1);
-          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
-          int node1;
-          int node2;
-          string modulename2;
-          if (extrainfo.substr(0,1).compare("&") == 0)
-          {
-            modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
-          }else{
-            node1 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
-            extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
-            modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
-            extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
-            node2 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
-          }
-          string condition = msg->condition();
-          string dependency = msg->dependency();
-          if (connect)
-          {
-            SendGaitTable(GetModulePtrByName(modulename1), modulename1, 
-                modulename2, node1, node2, 1,condition,dependency);
-          }else{
-            SendGaitTable(GetModulePtrByName(modulename1), modulename1, 
-                modulename2, 4, 4, 2,condition,dependency);
-          }
-          return;
-        }
-      }
-      bool flags[4] = {true,true,true,true};
-      double joints_values[4] = {0,0,0,0};
-      joints_values[0] = msg->jointangles(0);
-      joints_values[1] = msg->jointangles(1);
-      joints_values[2] = msg->jointangles(2);
-      joints_values[3] = msg->jointangles(3);
-      string condition = msg->condition();
-      string dependency = msg->dependency();
-      unsigned int time_interval = msg->timer();
-      if (time_interval == 0)
-      {
-        SendGaitTable(GetModulePtrByName(modelname), flags, joints_values, 3, 
-            condition, dependency);
-      }else
-      {
-        SendGaitTable(GetModulePtrByName(modelname), flags, joints_values, 3, 
-            time_interval, condition, dependency);
-      }
+    bool load_Configuration = false;
+    if (msg->has_loadconfiguration()) {
+      load_Configuration = msg->loadconfiguration();
     }
-    // User specify a joint angle
-    if (!play_mode)
-    {
-      // Disconnect Two Model
-      // TODO: Need an elegent way to deal with none play mode disconnection
-      if (msg->has_extrinfo())
-      {
-        string extrainfo = msg->extrinfo();
-        if (extrainfo.substr(2,1).compare("+")==0 || 
-            extrainfo.substr(2,1).compare("-")==0)
-        {
-          bool connect = true;
-          if (extrainfo.substr(2,1).compare("-")==0)
-          {
-            connect = false;
-          }
-          extrainfo = extrainfo.substr(4);
-          string modulename1 = extrainfo.substr(1,extrainfo.find(" ")-1);
-          extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
-          int node1;
-          int node2;
-          string modulename2;
-          if (extrainfo.substr(0,1).compare("&") == 0)
-          {
-            modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
-          }else{
-            node1 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
+    if (load_Configuration) {
+      // Build initial configuration from file
+      BuildConfigurationFromXML(msg->extrinfo());
+    }else{
+      // Sending gait table commands
+      if (play_mode) {
+        // Disconnect Two Model
+        if (msg->has_extrinfo()) {
+          string extrainfo = msg->extrinfo();
+          if (extrainfo.substr(2,1).compare("+")==0 || 
+              extrainfo.substr(2,1).compare("-")==0) {
+            bool connect = true;
+            if (extrainfo.substr(2,1).compare("-")==0) {
+              connect = false;
+            }
+            extrainfo = extrainfo.substr(4);
+            string modulename1 = extrainfo.substr(1,extrainfo.find(" ")-1);
             extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
-            modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
-            extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
-            node2 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
+            int node1;
+            int node2;
+            string modulename2;
+            if (extrainfo.substr(0,1).compare("&") == 0) {
+              modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
+            }else{
+              node1 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
+              extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+              modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
+              extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+              node2 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
+            }
+            string condition = msg->condition();
+            string dependency = msg->dependency();
+            if (connect) {
+              SendGaitTable(GetModulePtrByName(modulename1), modulename1, 
+                  modulename2, node1, node2, 1,condition,dependency);
+            }else{
+              SendGaitTable(GetModulePtrByName(modulename1), modulename1, 
+                  modulename2, 4, 4, 2,condition,dependency);
+            }
+            return;
           }
-
-          if (connect)
-          {
-            ActiveConnect(GetModulePtrByName(modulename1), 
-                GetModulePtrByName(modulename2), node1, node2);
-          }else{
-            Disconnect(modulename1, modulename2);
-          }
-          return;
+        }
+        bool flags[4] = {true,true,true,true};
+        double joints_values[4] = {0,0,0,0};
+        joints_values[0] = msg->jointangles(0);
+        joints_values[1] = msg->jointangles(1);
+        joints_values[2] = msg->jointangles(2);
+        joints_values[3] = msg->jointangles(3);
+        string condition = msg->condition();
+        string dependency = msg->dependency();
+        unsigned int time_interval = msg->timer();
+        if (time_interval == 0) {
+          SendGaitTable(GetModulePtrByName(modelname), flags, joints_values, 3, 
+              condition, dependency);
+        }else{
+          SendGaitTable(GetModulePtrByName(modelname), flags, joints_values, 3, 
+              time_interval, condition, dependency);
         }
       }
-      bool flags[4] = {true,true,true,true};
-      double joints_values[4] = {0,0,0,0};
-      joints_values[0] = msg->jointangles(0);
-      joints_values[1] = msg->jointangles(1);
-      joints_values[2] = msg->jointangles(2);
-      joints_values[3] = msg->jointangles(3);
-      SendGaitTableInstance(GetModulePtrByName(modelname), flags, joints_values,3);
-      cout<<"World: model problem: "<<modelname<<endl;
-      currentWorld->GetModel(modelname)->GetJoint("Front_wheel_hinge")
-          ->SetAngle(0,msg->jointangles(0));
-      currentWorld->GetModel(modelname)->GetJoint("Left_wheel_hinge")
-          ->SetAngle(0,msg->jointangles(1));
-      currentWorld->GetModel(modelname)->GetJoint("Right_wheel_hinge")
-          ->SetAngle(0,msg->jointangles(2));
-      currentWorld->GetModel(modelname)->GetJoint("Center_hinge")
-          ->SetAngle(0,msg->jointangles(3));
+      // User specify a joint angle
+      if (!play_mode) {
+        // Disconnect Two Model
+        // TODO: Need an elegent way to deal with none play mode disconnection
+        if (msg->has_extrinfo()) {
+          string extrainfo = msg->extrinfo();
+          if (extrainfo.substr(2,1).compare("+")==0 || 
+              extrainfo.substr(2,1).compare("-")==0) {
+            bool connect = true;
+            if (extrainfo.substr(2,1).compare("-")==0) {
+              connect = false;
+            }
+            extrainfo = extrainfo.substr(4);
+            string modulename1 = extrainfo.substr(1,extrainfo.find(" ")-1);
+            extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+            int node1;
+            int node2;
+            string modulename2;
+            if (extrainfo.substr(0,1).compare("&") == 0) {
+              modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
+            }else{
+              node1 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
+              extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+              modulename2 = extrainfo.substr(1,extrainfo.find(" ")-1);
+              extrainfo = extrainfo.substr(extrainfo.find(" ")+1);
+              node2 = atoi(extrainfo.substr(1,extrainfo.find(" ")-1).c_str());
+            }
+
+            if (connect) {
+              ActiveConnect(GetModulePtrByName(modulename1), 
+                  GetModulePtrByName(modulename2), node1, node2);
+            }else{
+              Disconnect(modulename1, modulename2);
+            }
+            return;
+          }
+        }
+        bool flags[4] = {true,true,true,true};
+        double joints_values[4] = {0,0,0,0};
+        joints_values[0] = msg->jointangles(0);
+        joints_values[1] = msg->jointangles(1);
+        joints_values[2] = msg->jointangles(2);
+        joints_values[3] = msg->jointangles(3);
+        SendGaitTableInstance(GetModulePtrByName(modelname), flags, joints_values,3);
+        cout<<"World: model problem: "<<modelname<<endl;
+        currentWorld->GetModel(modelname)->GetJoint("Front_wheel_hinge")
+            ->SetAngle(0,msg->jointangles(0));
+        currentWorld->GetModel(modelname)->GetJoint("Left_wheel_hinge")
+            ->SetAngle(0,msg->jointangles(1));
+        currentWorld->GetModel(modelname)->GetJoint("Right_wheel_hinge")
+            ->SetAngle(0,msg->jointangles(2));
+        currentWorld->GetModel(modelname)->GetJoint("Center_hinge")
+            ->SetAngle(0,msg->jointangles(3));
+      }
     }
   }
 } // GaitRecorder::GaitRecorderMessageDecoding
@@ -237,9 +226,11 @@ void GaitRecorder::RecordCurrentPose(Frame &current_frame)
     PoseRecord new_record(joint0,joint1,joint2,joint3,currentmodel);
     current_frame.AddAPosition(new_record);
   }
-}
+} // GaitRecorder::RecordCurrentPose
 void GaitRecorder::SetPose(const Frame *a_frame)
 {
+  this->currentWorld->DisableAllModels();
+  // common::Time::MSleep(1000);
   for (unsigned int i = 0; i < a_frame->GetPositionSize(); ++i) {
     bool flags[4] = {true,true,true,true};
     SendGaitTableInstance(
@@ -254,6 +245,9 @@ void GaitRecorder::SetPose(const Frame *a_frame)
         0,a_frame->GetPosition(i).JointAngles[3]);
     GetModulePtrByIDX(i)->ModuleObject->SetWorldPose(a_frame->GetPosition(i).Position);
   }
+  this->currentWorld->EnableAllModels();
+  // common::Time::MSleep(5000);
+  // this->currentWorld->EnablePhysicsEngine(true);
 } // GaitRecorder::SetPose
 // Register this plugin with the simulator
 GZ_REGISTER_WORLD_PLUGIN(GaitRecorder)
