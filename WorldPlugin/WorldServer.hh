@@ -21,6 +21,7 @@
 #include <fstream>
 #include <boost/bind.hpp>
 #include <queue>
+#include <unistd.h>
 
 #include <sdf/sdf.hh>
 #include "gazebo/gazebo.hh"
@@ -49,7 +50,7 @@
 #define VALIDCONNECTIONDISLOWER 0.098
 // TODO: tests needed to make sure it depende on current execution folder
 #define MODULEPATH "SMORE.sdf"
-#define INTIALCONFIGURATION "InitialConfiguration"
+// #define INTIALCONFIGURATION "InitialConfiguration"
 
 using std::string;
 using std::vector;
@@ -179,7 +180,12 @@ class WorldServer : public WorldPlugin
   // These functions are utility functions
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   int GetNodeIDByName(string node_name);
+  /// Get SmoresModule object by specifying the name
   SmoresModulePtr GetModulePtrByName(string module_name);
+  /// Get SmoresModule object by specifying the index in the vector moduleList
+  SmoresModulePtr GetModulePtrByIDX(unsigned int idx);
+  /// Get the count of the modules that are in the list
+  unsigned int GetModuleListSize(void);
   void EraseCommandPtrByModule(SmoresModulePtr module_ptr);
   int GetModuleIndexByName(string module_name);
   /// Check whether two nodes are connected together
@@ -276,6 +282,8 @@ class WorldServer : public WorldPlugin
   vector<transport::SubscriberPtr> WorldColSubscriber;
   /// Auto Magnetic Connection Enable Flag
   bool autoMagneticConnectionFlag;
+  /// The path of the file of configuration
+  string configurationFile;
 //+++++++++ testing ++++++++++++++++++++++++++++
 };
 } // namespace gazebo
