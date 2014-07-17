@@ -433,7 +433,10 @@ class App(Frame):
         #-- Get module position and orientation.
         parent_face = self.Node2.get()
         new_module_face = self.Node1.get()
-        (module_position, rotation_matrix, quaternion) = kinematics.get_new_position(theOtherModule, module_jointangle, parent_face, new_module_face)
+        face_offset_angle = self.aoffset.get()
+        print face_offset_angle
+        (module_position, rotation_matrix, quaternion) = kinematics.get_new_position(
+            theOtherModule, module_jointangle, parent_face, new_module_face, face_offset_angle)
         print 'XYZ: ' + str(module_position[0:3])
         print 'RPY: ' + str(module_position[3:6])
         print 'Quat: ' + str(quaternion)
